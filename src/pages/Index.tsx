@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import * as XLSX from "xlsx";
 import { TrendingUp, DollarSign, PieChart, Activity } from "lucide-react";
 import { MetricCard } from "@/components/MetricCard";
 import { PerformanceChart } from "@/components/PerformanceChart";
@@ -7,7 +6,7 @@ import { AnnualReturnsTable } from "@/components/AnnualReturnsTable";
 import { CorrelationCard } from "@/components/CorrelationCard";
 import { InvestmentAnalysis } from "@/components/InvestmentAnalysis";
 import {
-  parsePortfolioData,
+  parseCSV,
   calculateCorrelations,
   calculateAnnualReturns,
   calculateOverallMetrics,
@@ -21,13 +20,9 @@ const Index = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const response = await fetch("/src/assets/PORTFOLIO_SNAPSHOT.xlsx");
-        const arrayBuffer = await response.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: "array" });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
-        const parsedData = parsePortfolioData(jsonData);
+        const response = await fetch("/src/assets/PORTFOLIO_SNAPSHOT.csv");
+        const csvText = await response.text();
+        const parsedData = parseCSV(csvText);
         setData(parsedData);
       } catch (error) {
         console.error("Error loading portfolio data:", error);

@@ -25,6 +25,31 @@ export interface CorrelationData {
   csi300: number;
 }
 
+export function parseCSV(csvText: string): PortfolioData[] {
+  const lines = csvText.trim().split('\n');
+  // Skip first 2 rows (Sheet name and header)
+  return lines.slice(2).map(line => {
+    const values = line.split(',').map(v => v.trim());
+    
+    // Parse DD/MM/YYYY format to YYYY-MM-DD
+    const dateParts = values[0].split('/');
+    const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+    
+    return {
+      date: formattedDate,
+      sha: parseFloat(values[1]) || 0,
+      she: parseFloat(values[2]) || 0,
+      csi300: parseFloat(values[3]) || 0,
+      shares: parseFloat(values[4]) || 0,
+      shareValue: parseFloat(values[5]) || 0,
+      gainLoss: parseFloat(values[6].replace(/[()]/g, '').replace(',', '')) * (values[6].includes('(') ? -1 : 1) || 0,
+      dailyGain: parseFloat(values[7].replace(/[()]/g, '').replace(',', '')) * (values[7].includes('(') ? -1 : 1) || 0,
+      marketValue: parseFloat(values[8]) || 0,
+      principle: parseFloat(values[9]) || 0,
+    };
+  }).filter(row => row.shareValue > 0);
+}
+
 export function parsePortfolioData(data: any[]): PortfolioData[] {
   return data.slice(1).map(row => ({
     date: row[0],
