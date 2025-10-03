@@ -33,7 +33,12 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
         <ResponsiveContainer width="100%" height={400}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
+            <XAxis 
+              dataKey="date" 
+              angle={-45}
+              textAnchor="end"
+              height={80}
+            />
             <YAxis 
               label={{ value: 'Return (%)', angle: -90, position: 'insideLeft' }} 
               domain={['auto', 'auto']}

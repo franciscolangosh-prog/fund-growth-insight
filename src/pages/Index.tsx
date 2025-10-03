@@ -5,6 +5,8 @@ import { PerformanceChart } from "@/components/PerformanceChart";
 import { AnnualReturnsTable } from "@/components/AnnualReturnsTable";
 import { CorrelationCard } from "@/components/CorrelationCard";
 import { InvestmentAnalysis } from "@/components/InvestmentAnalysis";
+import { InvestmentBehaviorAnalysis } from "@/components/InvestmentBehaviorAnalysis";
+import { FileUpload } from "@/components/FileUpload";
 import {
   parseCSV,
   calculateCorrelations,
@@ -16,9 +18,10 @@ import {
 const Index = () => {
   const [data, setData] = useState<PortfolioData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasUploadedFile, setHasUploadedFile] = useState(false);
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadDefaultData = async () => {
       try {
         const response = await fetch("/src/assets/PORTFOLIO_SNAPSHOT.csv");
         const csvText = await response.text();
@@ -31,8 +34,21 @@ const Index = () => {
       }
     };
 
-    loadData();
-  }, []);
+    if (!hasUploadedFile) {
+      loadDefaultData();
+    }
+  }, [hasUploadedFile]);
+
+  const handleFileUpload = (csvText: string) => {
+    try {
+      const parsedData = parseCSV(csvText);
+      setData(parsedData);
+      setHasUploadedFile(true);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error parsing uploaded file:", error);
+    }
+  };
 
   if (loading) {
     return (
@@ -71,6 +87,8 @@ const Index = () => {
           </p>
         </div>
 
+        <FileUpload onFileLoad={handleFileUpload} />
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title="Current Share Value"
@@ -106,6 +124,8 @@ const Index = () => {
             correlations={correlations}
           />
         </div>
+
+        <InvestmentBehaviorAnalysis data={data} />
 
         <AnnualReturnsTable returns={annualReturns} />
       </div>
