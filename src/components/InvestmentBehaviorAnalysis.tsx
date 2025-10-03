@@ -23,8 +23,8 @@ export function InvestmentBehaviorAnalysis({ data }: InvestmentBehaviorAnalysisP
     for (let i = 1; i < data.length; i++) {
       const principleChange = data[i].principle - data[i - 1].principle;
       
-      // Only analyze when there's a significant capital change (> 100)
-      if (Math.abs(principleChange) > 100) {
+      // Lower threshold to capture more actions (> 50 instead of 100)
+      if (Math.abs(principleChange) > 50) {
         // Calculate market trend over the past 30 days
         const lookbackPeriod = 30;
         const startIdx = Math.max(0, i - lookbackPeriod);
@@ -54,7 +54,45 @@ export function InvestmentBehaviorAnalysis({ data }: InvestmentBehaviorAnalysisP
     return { actions, contrarianActions, totalActions };
   };
 
+  const analyzeMarketDownturns = () => {
+    const downturns: Array<{
+      period: string;
+      marketDrop: number;
+      investorAction: string;
+      actionAmount: number;
+      wasContrarian: boolean;
+    }> = [];
+
+    // Find periods where market dropped significantly (> 10%)
+    for (let i = 30; i < data.length; i++) {
+      const lookbackPeriod = 30;
+      const startIdx = i - lookbackPeriod;
+      const marketChange = ((data[i].csi300 - data[startIdx].csi300) / data[startIdx].csi300) * 100;
+
+      if (marketChange < -10) {
+        // Check investor action during this period
+        const principleChange = data[i].principle - data[startIdx].principle;
+        
+        if (Math.abs(principleChange) > 50) {
+          const action = principleChange > 0 ? 'Invested' : 'Withdrew';
+          const wasContrarian = principleChange > 0; // Investing during downturn is contrarian
+          
+          downturns.push({
+            period: `${new Date(data[startIdx].date).toLocaleDateString()} - ${new Date(data[i].date).toLocaleDateString()}`,
+            marketDrop: marketChange,
+            investorAction: action,
+            actionAmount: Math.abs(principleChange),
+            wasContrarian,
+          });
+        }
+      }
+    }
+
+    return downturns;
+  };
+
   const { actions, contrarianActions, totalActions } = analyzeInvestmentBehavior();
+  const marketDownturns = analyzeMarketDownturns();
   const contrarianRatio = totalActions > 0 ? (contrarianActions / totalActions) * 100 : 0;
 
   const getInvestorType = () => {
@@ -85,7 +123,7 @@ export function InvestmentBehaviorAnalysis({ data }: InvestmentBehaviorAnalysisP
   const investorProfile = getInvestorType();
   const Icon = investorProfile.icon;
 
-  const recentActions = actions.slice(-5).reverse();
+  const recentActions = actions.slice(-10).reverse();
 
   return (
     <Card>
@@ -126,10 +164,38 @@ export function InvestmentBehaviorAnalysis({ data }: InvestmentBehaviorAnalysisP
           </div>
         </div>
 
+        {marketDownturns.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold">Behavior During Major Market Downturns</h4>
+            <p className="text-xs text-muted-foreground">Periods when CSI300 dropped more than 10%</p>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {marketDownturns.map((downturn, idx) => (
+                <div key={idx} className="flex items-center justify-between text-sm border-l-2 pl-3 py-2 bg-muted/30 rounded-r" 
+                     style={{ borderColor: downturn.wasContrarian ? 'hsl(var(--chart-1))' : 'hsl(var(--chart-5))' }}>
+                  <div className="flex-1">
+                    <p className="font-medium text-xs">{downturn.period}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {downturn.investorAction} ¥{downturn.actionAmount.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="text-right ml-4">
+                    <p className="text-red-600 font-semibold">
+                      Market {downturn.marketDrop.toFixed(1)}%
+                    </p>
+                    <Badge variant={downturn.wasContrarian ? "default" : "destructive"} className="text-xs mt-1">
+                      {downturn.wasContrarian ? 'Contrarian ✓' : 'Trend Following'}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {recentActions.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold">Recent Investment Actions</h4>
-            <div className="space-y-2">
+            <h4 className="text-sm font-semibold">Recent Investment Actions (Last 10)</h4>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
               {recentActions.map((action, idx) => (
                 <div key={idx} className="flex items-center justify-between text-sm border-l-2 pl-3 py-1" 
                      style={{ borderColor: action.isContrarian ? 'hsl(var(--chart-1))' : 'hsl(var(--chart-3))' }}>
