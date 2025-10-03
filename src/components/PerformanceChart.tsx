@@ -34,7 +34,10 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
-            <YAxis label={{ value: 'Return (%)', angle: -90, position: 'insideLeft' }} />
+            <YAxis 
+              label={{ value: 'Return (%)', angle: -90, position: 'insideLeft' }} 
+              domain={['auto', 'auto']}
+            />
             <Tooltip />
             <Legend />
             <Line type="monotone" dataKey="Fund" stroke="hsl(var(--primary))" strokeWidth={2} />
