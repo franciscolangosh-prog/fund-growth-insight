@@ -17,10 +17,10 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
 
       return {
         date: new Date(row.date).toLocaleDateString(),
-        Fund: ((row.shareValue / baseShare - 1) * 100).toFixed(2),
-        SHA: ((row.sha / baseSHA - 1) * 100).toFixed(2),
-        SHE: ((row.she / baseSHE - 1) * 100).toFixed(2),
-        CSI300: ((row.csi300 / baseCSI - 1) * 100).toFixed(2),
+        Fund: Number(((row.shareValue / baseShare - 1) * 100).toFixed(2)),
+        SHA: Number(((row.sha / baseSHA - 1) * 100).toFixed(2)),
+        SHE: Number(((row.she / baseSHE - 1) * 100).toFixed(2)),
+        CSI300: Number(((row.csi300 / baseCSI - 1) * 100).toFixed(2)),
       };
     });
 
