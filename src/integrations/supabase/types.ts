@@ -14,7 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      portfolio_data: {
+        Row: {
+          created_at: string
+          csi300: number
+          date: string
+          id: string
+          portfolio_id: string
+          principle: number
+          sha: number
+          share_value: number
+          she: number
+        }
+        Insert: {
+          created_at?: string
+          csi300: number
+          date: string
+          id?: string
+          portfolio_id: string
+          principle: number
+          sha: number
+          share_value: number
+          she: number
+        }
+        Update: {
+          created_at?: string
+          csi300?: number
+          date?: string
+          id?: string
+          portfolio_id?: string
+          principle?: number
+          sha?: number
+          share_value?: number
+          she?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_data_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolios: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
