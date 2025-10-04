@@ -1,33 +1,49 @@
-import { useState } from "react";
-import { Upload, Download, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Upload, Download, FileText } from "lucide-react";
+import { toast } from "sonner";
+import { useState } from "react";
+import { parseCSV } from "@/utils/portfolioAnalysis";
+import { savePortfolioToDatabase } from "@/utils/portfolioDatabase";
 
 interface FileUploadProps {
-  onFileLoad: (csvText: string) => void;
+  onFileUploaded: () => void;
 }
 
-export function FileUpload({ onFileLoad }: FileUploadProps) {
-  const { toast } = useToast();
+export function FileUpload({ onFileUploaded }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [portfolioName, setPortfolioName] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileRead = (file: File) => {
+  const handleFileRead = async (file: File) => {
+    if (!portfolioName.trim()) {
+      toast.error("Please enter a portfolio name first");
+      return;
+    }
+
+    setIsUploading(true);
+    
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      onFileLoad(text);
-      toast({
-        title: "File uploaded successfully",
-        description: `${file.name} has been loaded and analyzed.`,
-      });
+    reader.onload = async (e) => {
+      const csvText = e.target?.result as string;
+      const parsedData = parseCSV(csvText);
+      
+      const portfolioId = await savePortfolioToDatabase(portfolioName, parsedData);
+      
+      if (portfolioId) {
+        toast.success("Portfolio saved successfully!");
+        setPortfolioName("");
+        onFileUploaded();
+      } else {
+        toast.error("Failed to save portfolio to database");
+      }
+      
+      setIsUploading(false);
     };
     reader.onerror = () => {
-      toast({
-        title: "Error reading file",
-        description: "Please try again with a valid CSV file.",
-        variant: "destructive",
-      });
+      toast.error("Error reading file. Please try again.");
+      setIsUploading(false);
     };
     reader.readAsText(file);
   };
@@ -37,11 +53,7 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
     if (!file) return;
 
     if (!file.name.endsWith('.csv')) {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload a CSV file",
-        variant: "destructive",
-      });
+      toast.error("Invalid file type. Please upload a CSV file");
       return;
     }
 
@@ -56,18 +68,15 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
     if (file && file.name.endsWith('.csv')) {
       handleFileRead(file);
     } else {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload a CSV file.",
-        variant: "destructive",
-      });
+      toast.error("Invalid file type. Please upload a CSV file.");
     }
   };
 
   const downloadTemplate = () => {
-    const template = `date,principle,share_value,sha,she,csi300
-2024-01-01,10000,1.0000,3000.00,2000.00,3500.00
-2024-01-02,10000,1.0050,3010.00,2005.00,3515.00`;
+    const template = `Sheet1
+date,SHA,SHE,CSI300,shares,share_value,gain_loss,daily_gain,market_value,principle
+01/01/2024,3000.00,2000.00,3500.00,1000.00,1.0000,0.00,0.00,1000.00,1000.00
+02/01/2024,3010.00,2005.00,3515.00,1000.00,1.0050,5.00,5.00,1005.00,1000.00`;
     
     const blob = new Blob([template], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -77,10 +86,7 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
     a.click();
     window.URL.revokeObjectURL(url);
     
-    toast({
-      title: "Template downloaded",
-      description: "Use this template to format your portfolio data.",
-    });
+    toast.success("Template downloaded");
   };
 
   return (
@@ -95,6 +101,20 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <label htmlFor="portfolioName" className="text-sm font-medium">
+            Portfolio Name
+          </label>
+          <Input
+            id="portfolioName"
+            type="text"
+            placeholder="e.g., My Investment Portfolio 2025"
+            value={portfolioName}
+            onChange={(e) => setPortfolioName(e.target.value)}
+            disabled={isUploading}
+          />
+        </div>
+
         <div
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             isDragging ? 'border-primary bg-primary/5' : 'border-border'
@@ -108,7 +128,7 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
         >
           <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <p className="text-sm font-medium mb-2">
-            Drag and drop your CSV file here, or click to browse
+            {portfolioName.trim() ? "Drag and drop your CSV file here, or click to browse" : "Enter a portfolio name first"}
           </p>
           <input
             type="file"
@@ -116,10 +136,16 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
             onChange={handleFileChange}
             className="hidden"
             id="file-upload"
+            disabled={isUploading || !portfolioName.trim()}
           />
           <label htmlFor="file-upload">
-            <Button variant="outline" className="mt-2" asChild>
-              <span>Browse Files</span>
+            <Button 
+              variant="outline" 
+              className="mt-2" 
+              asChild
+              disabled={isUploading || !portfolioName.trim()}
+            >
+              <span>{isUploading ? "Uploading..." : "Browse Files"}</span>
             </Button>
           </label>
         </div>
@@ -131,17 +157,20 @@ export function FileUpload({ onFileLoad }: FileUploadProps) {
               <div className="text-xs space-y-1 text-muted-foreground">
                 <p><strong>Required columns (in order):</strong></p>
                 <ul className="list-disc list-inside ml-2 space-y-1">
-                  <li><code className="bg-background px-1 rounded">date</code> - Date in YYYY-MM-DD format</li>
-                  <li><code className="bg-background px-1 rounded">principle</code> - Your invested capital amount</li>
-                  <li><code className="bg-background px-1 rounded">share_value</code> - Portfolio share value (net asset value)</li>
-                  <li><code className="bg-background px-1 rounded">sha</code> - Shanghai Composite Index value</li>
-                  <li><code className="bg-background px-1 rounded">she</code> - Shenzhen Component Index value</li>
-                  <li><code className="bg-background px-1 rounded">csi300</code> - CSI 300 Index value</li>
+                  <li><code className="bg-background px-1 rounded">date</code> - Date in DD/MM/YYYY format</li>
+                  <li><code className="bg-background px-1 rounded">SHA</code> - Shanghai Composite Index value</li>
+                  <li><code className="bg-background px-1 rounded">SHE</code> - Shenzhen Component Index value</li>
+                  <li><code className="bg-background px-1 rounded">CSI300</code> - CSI 300 Index value</li>
+                  <li><code className="bg-background px-1 rounded">shares</code> - Number of shares</li>
+                  <li><code className="bg-background px-1 rounded">share_value</code> - Share value</li>
+                  <li><code className="bg-background px-1 rounded">gain_loss</code> - Total gain/loss</li>
+                  <li><code className="bg-background px-1 rounded">daily_gain</code> - Daily gain</li>
+                  <li><code className="bg-background px-1 rounded">market_value</code> - Market value</li>
+                  <li><code className="bg-background px-1 rounded">principle</code> - Principle amount</li>
                 </ul>
-                <p className="mt-2"><strong>Example row:</strong></p>
-                <code className="block bg-background px-2 py-1 rounded text-xs">
-                  2024-01-01,10000,1.0050,3000.00,2000.00,3500.00
-                </code>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  First row should contain sheet name, second row should contain column headers
+                </p>
               </div>
             </div>
             <Button 

@@ -7,6 +7,7 @@ import { CorrelationCard } from "@/components/CorrelationCard";
 import { InvestmentAnalysis } from "@/components/InvestmentAnalysis";
 import { InvestmentBehaviorAnalysis } from "@/components/InvestmentBehaviorAnalysis";
 import { FileUpload } from "@/components/FileUpload";
+import { PortfolioSelector } from "@/components/PortfolioSelector";
 import {
   parseCSV,
   calculateCorrelations,
@@ -14,40 +15,74 @@ import {
   calculateOverallMetrics,
   PortfolioData,
 } from "@/utils/portfolioAnalysis";
+import {
+  savePortfolioToDatabase,
+  loadPortfolioFromDatabase,
+  listPortfolios,
+} from "@/utils/portfolioDatabase";
 
 const Index = () => {
   const [data, setData] = useState<PortfolioData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hasUploadedFile, setHasUploadedFile] = useState(false);
+  const [portfolios, setPortfolios] = useState<any[]>([]);
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
+
+  const loadPortfolios = async () => {
+    const portfolioList = await listPortfolios();
+    setPortfolios(portfolioList);
+    
+    if (portfolioList.length > 0 && !selectedPortfolioId) {
+      setSelectedPortfolioId(portfolioList[0].id);
+    }
+  };
 
   useEffect(() => {
-    const loadDefaultData = async () => {
-      try {
-        const response = await fetch("/PORTFOLIO_SNAPSHOT.csv");
-        const csvText = await response.text();
-        const parsedData = parseCSV(csvText);
-        setData(parsedData);
-      } catch (error) {
-        console.error("Error loading portfolio data:", error);
-      } finally {
-        setLoading(false);
+    const initializeData = async () => {
+      const portfolioList = await listPortfolios();
+      setPortfolios(portfolioList);
+
+      if (portfolioList.length > 0) {
+        // Load first portfolio from database
+        setSelectedPortfolioId(portfolioList[0].id);
+        const portfolioData = await loadPortfolioFromDatabase(portfolioList[0].id);
+        setData(portfolioData);
+      } else {
+        // Load default CSV and save to database
+        try {
+          const response = await fetch("/PORTFOLIO_SNAPSHOT.csv");
+          const csvText = await response.text();
+          const parsedData = parseCSV(csvText);
+          
+          const portfolioId = await savePortfolioToDatabase("Default Portfolio", parsedData);
+          if (portfolioId) {
+            setSelectedPortfolioId(portfolioId);
+            await loadPortfolios();
+          }
+          setData(parsedData);
+        } catch (error) {
+          console.error("Error loading default portfolio data:", error);
+        }
+      }
+      
+      setLoading(false);
+    };
+
+    initializeData();
+  }, []);
+
+  useEffect(() => {
+    const loadSelectedPortfolio = async () => {
+      if (selectedPortfolioId) {
+        const portfolioData = await loadPortfolioFromDatabase(selectedPortfolioId);
+        setData(portfolioData);
       }
     };
 
-    if (!hasUploadedFile) {
-      loadDefaultData();
-    }
-  }, [hasUploadedFile]);
+    loadSelectedPortfolio();
+  }, [selectedPortfolioId]);
 
-  const handleFileUpload = (csvText: string) => {
-    try {
-      const parsedData = parseCSV(csvText);
-      setData(parsedData);
-      setHasUploadedFile(true);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error parsing uploaded file:", error);
-    }
+  const handleFileUploaded = async () => {
+    await loadPortfolios();
   };
 
   if (loading) {
@@ -87,7 +122,14 @@ const Index = () => {
           </p>
         </div>
 
-        <FileUpload onFileLoad={handleFileUpload} />
+        <PortfolioSelector
+          portfolios={portfolios}
+          selectedPortfolioId={selectedPortfolioId}
+          onSelectPortfolio={setSelectedPortfolioId}
+          onPortfoliosChange={loadPortfolios}
+        />
+
+        <FileUpload onFileUploaded={handleFileUploaded} />
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
