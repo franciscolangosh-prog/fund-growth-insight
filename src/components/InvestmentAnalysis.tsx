@@ -12,26 +12,35 @@ export function InvestmentAnalysis({ annualizedReturn, totalReturn, correlations
   const avgCorrelation = (correlations.sha + correlations.she + correlations.csi300) / 3;
   
   const getRecommendation = () => {
-    if (annualizedReturn > 15 && avgCorrelation > 0.7) {
+    // Funds that consistently beat the market may have lower correlation
+    // Focus more on absolute returns rather than correlation
+    if (annualizedReturn > 12) {
       return {
         verdict: "Highly Recommended",
         color: "bg-green-600",
         icon: TrendingUp,
-        description: "Strong performance with good market correlation. Suitable for long-term investment."
+        description: "Excellent performance with strong annualized returns. Suitable for long-term investment."
       };
-    } else if (annualizedReturn > 8 && annualizedReturn <= 15) {
+    } else if (annualizedReturn > 6 && annualizedReturn <= 12) {
       return {
         verdict: "Moderately Recommended",
         color: "bg-blue-600",
         icon: AlertCircle,
-        description: "Decent returns with moderate risk. Consider as part of diversified portfolio."
+        description: "Solid returns that outperform typical savings rates. Consider as part of diversified portfolio."
+      };
+    } else if (annualizedReturn > 0) {
+      return {
+        verdict: "Low Returns",
+        color: "bg-yellow-600",
+        icon: AlertCircle,
+        description: "Positive but modest returns. May be suitable for conservative investors."
       };
     } else {
       return {
         verdict: "Not Recommended",
         color: "bg-red-600",
         icon: TrendingDown,
-        description: "Below-average performance. Consider alternative investment options."
+        description: "Negative returns. Consider alternative investment options."
       };
     }
   };
