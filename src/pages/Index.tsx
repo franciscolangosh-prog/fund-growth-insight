@@ -23,7 +23,7 @@ const Index = () => {
   useEffect(() => {
     const loadDefaultData = async () => {
       try {
-        const response = await fetch("/src/assets/PORTFOLIO_SNAPSHOT.csv");
+        const response = await fetch("/PORTFOLIO_SNAPSHOT.csv");
         const csvText = await response.text();
         const parsedData = parseCSV(csvText);
         setData(parsedData);
