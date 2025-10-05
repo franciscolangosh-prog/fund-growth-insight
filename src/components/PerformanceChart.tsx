@@ -7,8 +7,13 @@ interface PerformanceChartProps {
 }
 
 export function PerformanceChart({ data }: PerformanceChartProps) {
+  // Sample data points more intelligently to show full range
+  const totalPoints = data.length;
+  const maxPoints = 200; // Maximum points to display for performance
+  const step = Math.max(1, Math.floor(totalPoints / maxPoints));
+  
   const chartData = data
-    .filter((_, index) => index % 30 === 0)
+    .filter((_, index) => index % step === 0 || index === totalPoints - 1)
     .map(row => {
       const baseShare = data[0].shareValue;
       const baseSHA = data[0].sha;
@@ -18,9 +23,9 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
       return {
         date: new Date(row.date).toLocaleDateString(),
         Fund: Number(((row.shareValue / baseShare - 1) * 100).toFixed(2)),
-        SHA: Number(((row.sha / baseSHA - 1) * 100).toFixed(2)),
-        SHE: Number(((row.she / baseSHE - 1) * 100).toFixed(2)),
-        CSI300: Number(((row.csi300 / baseCSI - 1) * 100).toFixed(2)),
+        "Shanghai Composite": Number(((row.sha / baseSHA - 1) * 100).toFixed(2)),
+        "Shenzhen Component": Number(((row.she / baseSHE - 1) * 100).toFixed(2)),
+        "CSI 300": Number(((row.csi300 / baseCSI - 1) * 100).toFixed(2)),
       };
     });
 
@@ -46,9 +51,9 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
             <Tooltip />
             <Legend />
             <Line type="monotone" dataKey="Fund" stroke="hsl(var(--primary))" strokeWidth={2} />
-            <Line type="monotone" dataKey="SHA" stroke="hsl(var(--chart-1))" strokeWidth={1.5} />
-            <Line type="monotone" dataKey="SHE" stroke="hsl(var(--chart-2))" strokeWidth={1.5} />
-            <Line type="monotone" dataKey="CSI300" stroke="hsl(var(--chart-3))" strokeWidth={1.5} />
+            <Line type="monotone" dataKey="Shanghai Composite" stroke="hsl(var(--chart-1))" strokeWidth={1.5} />
+            <Line type="monotone" dataKey="Shenzhen Component" stroke="hsl(var(--chart-2))" strokeWidth={1.5} />
+            <Line type="monotone" dataKey="CSI 300" stroke="hsl(var(--chart-3))" strokeWidth={1.5} />
           </LineChart>
         </ResponsiveContainer>
       </CardContent>
