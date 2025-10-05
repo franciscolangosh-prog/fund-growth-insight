@@ -138,10 +138,10 @@ export function calculateOverallMetrics(data: PortfolioData[]) {
   return {
     totalReturn,
     annualizedReturn,
-    currentShareValue: last.shareValue,
-    totalShares: last.shares,
-    totalMarketValue: last.marketValue,
-    totalGainLoss: last.gainLoss,
-    totalPrinciple: last.principle,
+    currentShareValue: last.shareValue || 0,
+    totalShares: last.shares || 0,
+    totalMarketValue: last.marketValue || 0,
+    totalGainLoss: last.gainLoss || 0,
+    totalPrinciple: last.principle || 0,
   };
 }

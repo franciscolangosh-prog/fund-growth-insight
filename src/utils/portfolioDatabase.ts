@@ -53,9 +53,9 @@ export const loadPortfolioFromDatabase = async (
 
     // Calculate derived fields
     return data.map((entry, index) => {
-      const principle = Number(entry.principle);
-      const shareValue = Number(entry.share_value);
-      const shares = principle / shareValue;
+      const principle = Number(entry.principle) || 0;
+      const shareValue = Number(entry.share_value) || 0;
+      const shares = shareValue > 0 ? principle / shareValue : 0;
       const marketValue = shares * shareValue;
       const gainLoss = marketValue - principle;
       
