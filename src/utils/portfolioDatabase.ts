@@ -1,5 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { PortfolioData } from "./portfolioAnalysis";
+
+type PortfolioDataRow = Tables<'portfolio_data'>;
 
 export const savePortfolioToDatabase = async (
   name: string,
@@ -43,16 +46,34 @@ export const loadPortfolioFromDatabase = async (
   portfolioId: string
 ): Promise<PortfolioData[]> => {
   try {
-    const { data, error } = await supabase
-      .from('portfolio_data')
-      .select('*')
-      .eq('portfolio_id', portfolioId)
-      .order('date', { ascending: true });
+    const PAGE_SIZE = 1000;
+    let from = 0;
+    let to = PAGE_SIZE - 1;
+    const allEntries: PortfolioDataRow[] = [];
 
-    if (error) throw error;
+    while (true) {
+      const { data: batch, error } = await supabase
+        .from('portfolio_data')
+        .select('*')
+        .eq('portfolio_id', portfolioId)
+        .order('date', { ascending: true })
+        .range(from, to);
+
+      if (error) throw error;
+      if (!batch || batch.length === 0) break;
+
+      allEntries.push(...batch);
+
+      if (batch.length < PAGE_SIZE) break;
+
+      from += PAGE_SIZE;
+      to += PAGE_SIZE;
+    }
+
+    if (allEntries.length === 0) return [];
 
     // Calculate derived fields
-    return data.map((entry, index) => {
+    return allEntries.map((entry, index) => {
       const principle = Number(entry.principle) || 0;
       const shareValue = Number(entry.share_value) || 0;
       const shares = shareValue > 0 ? principle / shareValue : 0;
@@ -62,9 +83,9 @@ export const loadPortfolioFromDatabase = async (
       // Calculate daily gain
       let dailyGain = 0;
       if (index > 0) {
-        const prevEntry = data[index - 1];
-        const prevShareValue = Number(prevEntry.share_value);
-        const prevShares = Number(prevEntry.principle) / prevShareValue;
+        const prevEntry = allEntries[index - 1];
+        const prevShareValue = Number(prevEntry.share_value) || 0;
+        const prevShares = prevShareValue > 0 ? Number(prevEntry.principle) / prevShareValue : 0;
         const prevMarketValue = prevShares * prevShareValue;
         dailyGain = marketValue - prevMarketValue;
       }
