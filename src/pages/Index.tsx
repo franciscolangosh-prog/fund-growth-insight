@@ -150,9 +150,10 @@ const Index = () => {
             trend={metrics.totalReturn}
           />
           <MetricCard
-            title="Total Gain/Loss"
-            value={`¥${metrics.totalGainLoss.toLocaleString()}`}
+            title="Outperformance vs Benchmarks"
+            value={`${metrics.outperformance > 0 ? '+' : ''}${metrics.outperformance.toFixed(2)}%`}
             icon={PieChart}
+            trend={metrics.outperformance}
           />
         </div>
 
@@ -164,6 +165,13 @@ const Index = () => {
             annualizedReturn={metrics.annualizedReturn}
             totalReturn={metrics.totalReturn}
             correlations={correlations}
+            benchmarkReturns={{
+              sha: metrics.shaAnnualized,
+              she: metrics.sheAnnualized,
+              csi300: metrics.csi300Annualized,
+              avgBenchmark: metrics.avgBenchmarkAnnualized,
+            }}
+            outperformance={metrics.annualizedOutperformance}
           />
         </div>
 

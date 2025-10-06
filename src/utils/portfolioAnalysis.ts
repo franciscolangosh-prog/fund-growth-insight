@@ -135,13 +135,38 @@ export function calculateOverallMetrics(data: PortfolioData[]) {
   const totalReturn = ((last.shareValue - first.shareValue) / first.shareValue) * 100;
   const annualizedReturn = (Math.pow(last.shareValue / first.shareValue, 1 / years) - 1) * 100;
 
+  // Calculate benchmark returns
+  const shaReturn = ((last.sha - first.sha) / first.sha) * 100;
+  const sheReturn = ((last.she - first.she) / first.she) * 100;
+  const csi300Return = ((last.csi300 - first.csi300) / first.csi300) * 100;
+  
+  // Calculate average benchmark return
+  const avgBenchmarkReturn = (shaReturn + sheReturn + csi300Return) / 3;
+  const outperformance = totalReturn - avgBenchmarkReturn;
+  
+  // Calculate annualized benchmark returns
+  const shaAnnualized = (Math.pow(last.sha / first.sha, 1 / years) - 1) * 100;
+  const sheAnnualized = (Math.pow(last.she / first.she, 1 / years) - 1) * 100;
+  const csi300Annualized = (Math.pow(last.csi300 / first.csi300, 1 / years) - 1) * 100;
+  const avgBenchmarkAnnualized = (shaAnnualized + sheAnnualized + csi300Annualized) / 3;
+
   return {
     totalReturn,
     annualizedReturn,
     currentShareValue: last.shareValue || 0,
     totalShares: last.shares || 0,
     totalMarketValue: last.marketValue || 0,
-    totalGainLoss: last.gainLoss || 0,
     totalPrinciple: last.principle || 0,
+    // Benchmark comparisons
+    shaReturn,
+    sheReturn,
+    csi300Return,
+    avgBenchmarkReturn,
+    outperformance,
+    shaAnnualized,
+    sheAnnualized,
+    csi300Annualized,
+    avgBenchmarkAnnualized,
+    annualizedOutperformance: annualizedReturn - avgBenchmarkAnnualized,
   };
 }
