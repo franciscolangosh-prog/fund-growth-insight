@@ -124,3 +124,85 @@ export const listPortfolios = async () => {
     return [];
   }
 };
+
+export const addPortfolioRecord = async (
+  portfolioId: string,
+  record: {
+    date: string;
+    principle: number;
+    shareValue: number;
+    sha: number;
+    she: number;
+    csi300: number;
+  }
+) => {
+  try {
+    const { error } = await supabase
+      .from('portfolio_data')
+      .insert({
+        portfolio_id: portfolioId,
+        date: record.date,
+        principle: record.principle,
+        share_value: record.shareValue,
+        sha: record.sha,
+        she: record.she,
+        csi300: record.csi300,
+      });
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error adding portfolio record:", error);
+    return false;
+  }
+};
+
+export const updatePortfolioRecord = async (
+  recordId: string,
+  record: {
+    principle: number;
+    shareValue: number;
+    sha: number;
+    she: number;
+    csi300: number;
+  }
+) => {
+  try {
+    const { error } = await supabase
+      .from('portfolio_data')
+      .update({
+        principle: record.principle,
+        share_value: record.shareValue,
+        sha: record.sha,
+        she: record.she,
+        csi300: record.csi300,
+      })
+      .eq('id', recordId);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error("Error updating portfolio record:", error);
+    return false;
+  }
+};
+
+export const getRecordByDate = async (
+  portfolioId: string,
+  date: string
+) => {
+  try {
+    const { data, error } = await supabase
+      .from('portfolio_data')
+      .select('*')
+      .eq('portfolio_id', portfolioId)
+      .eq('date', date)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error getting record by date:", error);
+    return null;
+  }
+};
