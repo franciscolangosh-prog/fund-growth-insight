@@ -10,9 +10,15 @@ const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     // Extract actual values from payload datapoint
     const dataPoint = payload[0].payload;
+    const fullDate = new Date(dataPoint.fullDate).toLocaleDateString('en-US', { 
+      weekday: 'short',
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
     return (
       <div className="bg-background border border-border p-3 rounded-lg shadow-lg">
-        <p className="font-semibold mb-2">{dataPoint.date}</p>
+        <p className="font-semibold mb-2">{fullDate}</p>
         <p style={{ color: payload[0].color }}>
           Fund Value: {dataPoint.actualFund.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </p>
@@ -43,6 +49,7 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
 
       return {
         date: new Date(row.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        fullDate: row.date,
         Fund: Number(((row.shareValue / baseShare - 1) * 100).toFixed(2)),
         "Shanghai Composite": Number(((row.sha / baseSHA - 1) * 100).toFixed(2)),
         "Shenzhen Component": Number(((row.she / baseSHE - 1) * 100).toFixed(2)),

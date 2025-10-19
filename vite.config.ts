@@ -5,6 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  base: "/portfolio-analysis/", // 适配 GitHub Pages 仓库名
   server: {
     host: "::",
     port: 8080,

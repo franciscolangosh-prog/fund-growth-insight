@@ -6,14 +6,22 @@ import { AnnualReturnsTable } from "@/components/AnnualReturnsTable";
 import { CorrelationCard } from "@/components/CorrelationCard";
 import { InvestmentAnalysis } from "@/components/InvestmentAnalysis";
 import { InvestmentBehaviorAnalysis } from "@/components/InvestmentBehaviorAnalysis";
+import { RiskMetricsCard } from "@/components/RiskMetricsCard";
+import { RollingMetricsChart } from "@/components/RollingMetricsChart";
+import { DrawdownChart } from "@/components/DrawdownChart";
+import { PerformanceAttribution } from "@/components/PerformanceAttribution";
+import { PortfolioHealthScore } from "@/components/PortfolioHealthScore";
 import { FileUpload } from "@/components/FileUpload";
 import { PortfolioSelector } from "@/components/PortfolioSelector";
 import { RecordDialog } from "@/components/RecordDialog";
+import { ViewRecordsDialog } from "@/components/ViewRecordsDialog";
 import {
   parseCSV,
   calculateCorrelations,
   calculateAnnualReturns,
   calculateOverallMetrics,
+  calculateRiskMetrics,
+  calculateRollingMetrics,
   PortfolioData,
 } from "@/utils/portfolioAnalysis";
 import {
@@ -117,6 +125,8 @@ const Index = () => {
   const metrics = calculateOverallMetrics(data);
   const correlations = calculateCorrelations(data);
   const annualReturns = calculateAnnualReturns(data);
+  const riskMetrics = calculateRiskMetrics(data);
+  const rollingMetrics = calculateRollingMetrics(data, 252); // Use 1 year window to ensure we get rolling data across the entire period
 
   if (!metrics) return null;
 
@@ -137,23 +147,26 @@ const Index = () => {
           onPortfoliosChange={loadPortfolios}
         />
 
-        <div className="flex gap-4 items-center">
-          <FileUpload onFileUploaded={handleFileUploaded} />
-          {selectedPortfolioId && (
-            <div className="flex gap-2">
-              <RecordDialog 
-                portfolioId={selectedPortfolioId} 
-                onRecordSaved={handleRecordSaved}
-                mode="add"
-              />
-              <RecordDialog 
-                portfolioId={selectedPortfolioId} 
-                onRecordSaved={handleRecordSaved}
-                mode="edit"
-              />
-            </div>
-          )}
-        </div>
+        {selectedPortfolioId && (
+          <div className="flex gap-2">
+            <RecordDialog 
+              portfolioId={selectedPortfolioId} 
+              onRecordSaved={handleRecordSaved}
+              mode="add"
+            />
+            <RecordDialog 
+              portfolioId={selectedPortfolioId} 
+              onRecordSaved={handleRecordSaved}
+              mode="edit"
+            />
+            <ViewRecordsDialog
+              portfolioId={selectedPortfolioId}
+              onRecordUpdated={handleRecordSaved}
+            />
+          </div>
+        )}
+
+        <FileUpload onFileUploaded={handleFileUploaded} />
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
@@ -168,36 +181,60 @@ const Index = () => {
             trend={metrics.annualizedReturn}
           />
           <MetricCard
-            title="Total Return"
-            value={`${metrics.totalReturn.toFixed(2)}%`}
+            title="Sharpe Ratio"
+            value={riskMetrics.sharpeRatio.toFixed(3)}
             icon={Activity}
-            trend={metrics.totalReturn}
+            trend={riskMetrics.sharpeRatio}
           />
           <MetricCard
-            title="Outperformance vs Benchmarks"
-            value={`${metrics.outperformance > 0 ? '+' : ''}${metrics.outperformance.toFixed(2)}%`}
+            title="Max Drawdown"
+            value={`${riskMetrics.maxDrawdown.toFixed(2)}%`}
             icon={PieChart}
-            trend={metrics.outperformance}
+            trend={-riskMetrics.maxDrawdown}
           />
         </div>
 
         <PerformanceChart data={data} />
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <CorrelationCard correlations={correlations} />
-          <InvestmentAnalysis
+          <RiskMetricsCard riskMetrics={riskMetrics} />
+          <PortfolioHealthScore 
+            riskMetrics={riskMetrics}
             annualizedReturn={metrics.annualizedReturn}
-            totalReturn={metrics.totalReturn}
-            correlations={correlations}
-            benchmarkReturns={{
-              sha: metrics.shaAnnualized,
-              she: metrics.sheAnnualized,
-              csi300: metrics.csi300Annualized,
-              avgBenchmark: metrics.avgBenchmarkAnnualized,
-            }}
-            outperformance={metrics.annualizedOutperformance}
+            maxDrawdown={riskMetrics.maxDrawdown}
           />
         </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <RollingMetricsChart rollingMetrics={rollingMetrics} portfolioData={data} />
+          <DrawdownChart data={data} />
+        </div>
+
+        <InvestmentAnalysis
+          annualizedReturn={metrics.annualizedReturn}
+          totalReturn={metrics.totalReturn}
+          correlations={correlations}
+          benchmarkReturns={{
+            sha: metrics.shaAnnualized,
+            she: metrics.sheAnnualized,
+            csi300: metrics.csi300Annualized,
+            avgBenchmark: metrics.avgBenchmarkAnnualized,
+          }}
+          outperformance={metrics.annualizedOutperformance}
+        />
+
+        <PerformanceAttribution
+          data={data}
+          riskMetrics={riskMetrics}
+          annualizedReturn={metrics.annualizedReturn}
+          benchmarkReturns={{
+            sha: metrics.shaAnnualized,
+            she: metrics.sheAnnualized,
+            csi300: metrics.csi300Annualized,
+            avgBenchmark: metrics.avgBenchmarkAnnualized,
+          }}
+        />
 
         <InvestmentBehaviorAnalysis data={data} />
 

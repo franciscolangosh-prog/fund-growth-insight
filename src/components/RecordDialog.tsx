@@ -53,6 +53,7 @@ interface RecordDialogProps {
 
 export function RecordDialog({ portfolioId, onRecordSaved, mode }: RecordDialogProps) {
   const [open, setOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [existingRecordId, setExistingRecordId] = useState<string | null>(null);
 
   const form = useForm<RecordFormValues>({
@@ -69,6 +70,7 @@ export function RecordDialog({ portfolioId, onRecordSaved, mode }: RecordDialogP
   const onDateSelect = async (date: Date | undefined) => {
     if (!date) return;
     form.setValue("date", date);
+    setCalendarOpen(false); // Close calendar after selection
 
     if (mode === "edit") {
       const dateStr = format(date, "yyyy-MM-dd");
@@ -167,7 +169,7 @@ export function RecordDialog({ portfolioId, onRecordSaved, mode }: RecordDialogP
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Date</FormLabel>
-                  <Popover>
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
