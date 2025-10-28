@@ -202,7 +202,29 @@ export const getRecordByDate = async (
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error("Error getting record by date:", error);
     return null;
   }
 };
+
+export const getRecordsByDateRange = async (
+  portfolioId: string,
+  startDate: string,
+  endDate: string
+): Promise<Tables<'portfolio_data'>[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('portfolio_data')
+      .select('*')
+      .eq('portfolio_id', portfolioId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error("Error getting records by date range:", error);
+    return [];
+  }
+};
+

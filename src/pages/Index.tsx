@@ -8,7 +8,7 @@ import { InvestmentAnalysis } from "@/components/InvestmentAnalysis";
 import { InvestmentBehaviorAnalysis } from "@/components/InvestmentBehaviorAnalysis";
 import { FileUpload } from "@/components/FileUpload";
 import { PortfolioSelector } from "@/components/PortfolioSelector";
-import { RecordDialog } from "@/components/RecordDialog";
+import { RecordsEditorDialog } from "@/components/RecordsEditorDialog";
 import {
   parseCSV,
   calculateCorrelations,
@@ -130,30 +130,22 @@ const Index = () => {
           </p>
         </div>
 
-        <PortfolioSelector
-          portfolios={portfolios}
-          selectedPortfolioId={selectedPortfolioId}
-          onSelectPortfolio={setSelectedPortfolioId}
-          onPortfoliosChange={loadPortfolios}
-        />
-
-        <div className="flex gap-4 items-center">
-          <FileUpload onFileUploaded={handleFileUploaded} />
+        <div className="flex items-center gap-4">
+          <PortfolioSelector
+            portfolios={portfolios}
+            selectedPortfolioId={selectedPortfolioId}
+            onSelectPortfolio={setSelectedPortfolioId}
+            onPortfoliosChange={loadPortfolios}
+          />
           {selectedPortfolioId && (
-            <div className="flex gap-2">
-              <RecordDialog 
-                portfolioId={selectedPortfolioId} 
-                onRecordSaved={handleRecordSaved}
-                mode="add"
-              />
-              <RecordDialog 
-                portfolioId={selectedPortfolioId} 
-                onRecordSaved={handleRecordSaved}
-                mode="edit"
-              />
-            </div>
+            <RecordsEditorDialog
+              portfolioId={selectedPortfolioId}
+              onRecordSaved={handleRecordSaved}
+            />
           )}
         </div>
+
+        <FileUpload onFileUploaded={handleFileUploaded} />
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
