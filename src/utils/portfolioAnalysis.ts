@@ -21,12 +21,20 @@ export interface AnnualReturn {
   shaReturn: number;
   sheReturn: number;
   csi300Return: number;
+  sp500Return: number;
+  nasdaqReturn: number;
+  ftse100Return: number;
+  hangsengReturn: number;
 }
 
 export interface CorrelationData {
   sha: number;
   she: number;
   csi300: number;
+  sp500: number;
+  nasdaq: number;
+  ftse100: number;
+  hangseng: number;
 }
 
 export function parseCSV(csvText: string): PortfolioData[] {
@@ -131,11 +139,19 @@ export function calculateCorrelations(data: PortfolioData[]): CorrelationData {
   const shaValues = data.map(d => d.sha);
   const sheValues = data.map(d => d.she);
   const csi300Values = data.map(d => d.csi300);
+  const sp500Values = data.map(d => d.sp500);
+  const nasdaqValues = data.map(d => d.nasdaq);
+  const ftse100Values = data.map(d => d.ftse100);
+  const hangsengValues = data.map(d => d.hangseng);
 
   return {
     sha: calculateCorrelation(shareValues, shaValues),
     she: calculateCorrelation(shareValues, sheValues),
     csi300: calculateCorrelation(shareValues, csi300Values),
+    sp500: calculateCorrelation(shareValues, sp500Values),
+    nasdaq: calculateCorrelation(shareValues, nasdaqValues),
+    ftse100: calculateCorrelation(shareValues, ftse100Values),
+    hangseng: calculateCorrelation(shareValues, hangsengValues),
   };
 }
 
@@ -159,6 +175,10 @@ export function calculateAnnualReturns(data: PortfolioData[]): AnnualReturn[] {
       shaReturn: ((last.sha - first.sha) / first.sha) * 100,
       sheReturn: ((last.she - first.she) / first.she) * 100,
       csi300Return: ((last.csi300 - first.csi300) / first.csi300) * 100,
+      sp500Return: first.sp500 > 0 ? ((last.sp500 - first.sp500) / first.sp500) * 100 : 0,
+      nasdaqReturn: first.nasdaq > 0 ? ((last.nasdaq - first.nasdaq) / first.nasdaq) * 100 : 0,
+      ftse100Return: first.ftse100 > 0 ? ((last.ftse100 - first.ftse100) / first.ftse100) * 100 : 0,
+      hangsengReturn: first.hangseng > 0 ? ((last.hangseng - first.hangseng) / first.hangseng) * 100 : 0,
     }))
     .sort((a, b) => a.year - b.year);
 }
