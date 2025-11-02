@@ -6,39 +6,99 @@ interface PerformanceChartProps {
   data: PortfolioData[];
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: any[];
+}
+
+const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
+  // Format date as "Jan. 1st, 2015"
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const monthNames = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.', 'Jul.', 'Aug.', 'Sep.', 'Oct.', 'Nov.', 'Dec.'];
+    const month = monthNames[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    
+    // Add ordinal suffix
+    const getOrdinalSuffix = (n: number) => {
+      const j = n % 10;
+      const k = n % 100;
+      if (j === 1 && k !== 11) return n + 'st';
+      if (j === 2 && k !== 12) return n + 'nd';
+      if (j === 3 && k !== 13) return n + 'rd';
+      return n + 'th';
+    };
+    
+    return `${month} ${getOrdinalSuffix(day)}, ${year}`;
+  };
+
   if (active && payload && payload.length) {
     const dataPoint = payload[0].payload;
+    const formattedDate = dataPoint.originalDate ? formatDate(dataPoint.originalDate) : dataPoint.date;
+    
     return (
       <div className="bg-background border border-border p-3 rounded-lg shadow-lg max-h-96 overflow-y-auto">
-        <p className="font-semibold mb-2">{dataPoint.date}</p>
+        <p className="font-semibold mb-2">{formattedDate}</p>
         <div className="space-y-1">
           <p style={{ color: payload.find((p: any) => p.dataKey === 'Fund')?.color }}>
             Fund: {dataPoint.actualFund.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            <span className="text-xs text-muted-foreground ml-2">
+              ({dataPoint.Fund >= 0 ? '+' : ''}{dataPoint.Fund.toFixed(2)}%)
+            </span>
           </p>
           <p className="text-xs text-muted-foreground mt-2">China Markets</p>
           <p style={{ color: payload.find((p: any) => p.dataKey === 'SHA')?.color }}>
             SHA: {dataPoint.actualSHA.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            <span className="text-xs text-muted-foreground ml-2">
+              ({dataPoint.SHA >= 0 ? '+' : ''}{dataPoint.SHA.toFixed(2)}%)
+            </span>
           </p>
           <p style={{ color: payload.find((p: any) => p.dataKey === 'SHE')?.color }}>
             SHE: {dataPoint.actualSHE.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            <span className="text-xs text-muted-foreground ml-2">
+              ({dataPoint.SHE >= 0 ? '+' : ''}{dataPoint.SHE.toFixed(2)}%)
+            </span>
           </p>
           <p style={{ color: payload.find((p: any) => p.dataKey === 'CSI300')?.color }}>
             CSI300: {dataPoint.actualCSI.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            <span className="text-xs text-muted-foreground ml-2">
+              ({dataPoint.CSI300 >= 0 ? '+' : ''}{dataPoint.CSI300.toFixed(2)}%)
+            </span>
           </p>
           <p className="text-xs text-muted-foreground mt-2">US Markets</p>
           <p style={{ color: payload.find((p: any) => p.dataKey === 'SP500')?.color }}>
             S&P500: {dataPoint.actualSP500.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {dataPoint.SP500 !== 0 && (
+              <span className="text-xs text-muted-foreground ml-2">
+                ({dataPoint.SP500 >= 0 ? '+' : ''}{dataPoint.SP500.toFixed(2)}%)
+              </span>
+            )}
           </p>
           <p style={{ color: payload.find((p: any) => p.dataKey === 'Nasdaq')?.color }}>
             Nasdaq: {dataPoint.actualNasdaq.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {dataPoint.Nasdaq !== 0 && (
+              <span className="text-xs text-muted-foreground ml-2">
+                ({dataPoint.Nasdaq >= 0 ? '+' : ''}{dataPoint.Nasdaq.toFixed(2)}%)
+              </span>
+            )}
           </p>
           <p className="text-xs text-muted-foreground mt-2">International</p>
           <p style={{ color: payload.find((p: any) => p.dataKey === 'FTSE100')?.color }}>
             FTSE100: {dataPoint.actualFTSE.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {dataPoint.FTSE100 !== 0 && (
+              <span className="text-xs text-muted-foreground ml-2">
+                ({dataPoint.FTSE100 >= 0 ? '+' : ''}{dataPoint.FTSE100.toFixed(2)}%)
+              </span>
+            )}
           </p>
           <p style={{ color: payload.find((p: any) => p.dataKey === 'HangSeng')?.color }}>
             HangSeng: {dataPoint.actualHangSeng.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {dataPoint.HangSeng !== 0 && (
+              <span className="text-xs text-muted-foreground ml-2">
+                ({dataPoint.HangSeng >= 0 ? '+' : ''}{dataPoint.HangSeng.toFixed(2)}%)
+              </span>
+            )}
           </p>
         </div>
       </div>
@@ -48,6 +108,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export function PerformanceChart({ data }: PerformanceChartProps) {
+
   const chartData = data
     .filter((_, index) => index % 30 === 0 || index === data.length - 1)
     .map(row => {
@@ -55,6 +116,7 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
 
       return {
         date: new Date(row.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        originalDate: row.date, // Store original date for tooltip formatting
         Fund: Number(((row.shareValue / base.shareValue - 1) * 100).toFixed(2)),
         SHA: Number(((row.sha / base.sha - 1) * 100).toFixed(2)),
         SHE: Number(((row.she / base.she - 1) * 100).toFixed(2)),
@@ -96,21 +158,21 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            {/* Fund - Primary color, bold */}
-            <Line type="monotone" dataKey="Fund" stroke="hsl(var(--primary))" strokeWidth={3} name="Fund" />
+            {/* Fund - Dark indigo, bold, prominent */}
+            <Line type="monotone" dataKey="Fund" stroke="#4338ca" strokeWidth={3} dot={false} name="Fund" />
             
             {/* China Markets - Green shades */}
-            <Line type="monotone" dataKey="SHA" stroke="#10b981" strokeWidth={1.5} name="SHA" />
-            <Line type="monotone" dataKey="SHE" stroke="#34d399" strokeWidth={1.5} name="SHE" />
-            <Line type="monotone" dataKey="CSI300" stroke="#6ee7b7" strokeWidth={1.5} name="CSI300" />
+            <Line type="monotone" dataKey="SHA" stroke="#10b981" strokeWidth={1.5} dot={false} name="SHA" />
+            <Line type="monotone" dataKey="SHE" stroke="#34d399" strokeWidth={1.5} dot={false} name="SHE" />
+            <Line type="monotone" dataKey="CSI300" stroke="#6ee7b7" strokeWidth={1.5} dot={false} name="CSI300" />
             
-            {/* US Markets - Blue shades */}
-            <Line type="monotone" dataKey="SP500" stroke="#3b82f6" strokeWidth={1.5} name="S&P500" />
-            <Line type="monotone" dataKey="Nasdaq" stroke="#60a5fa" strokeWidth={1.5} name="Nasdaq" />
+            {/* US Markets - Red and Amber for high visibility */}
+            <Line type="monotone" dataKey="SP500" stroke="#ef4444" strokeWidth={2} dot={false} name="S&P500" />
+            <Line type="monotone" dataKey="Nasdaq" stroke="#f59e0b" strokeWidth={2} dot={false} name="Nasdaq" />
             
             {/* International - Orange/Purple shades */}
-            <Line type="monotone" dataKey="FTSE100" stroke="#f97316" strokeWidth={1.5} name="FTSE100" />
-            <Line type="monotone" dataKey="HangSeng" stroke="#a855f7" strokeWidth={1.5} name="HangSeng" />
+            <Line type="monotone" dataKey="FTSE100" stroke="#f97316" strokeWidth={1.5} dot={false} name="FTSE100" />
+            <Line type="monotone" dataKey="HangSeng" stroke="#a855f7" strokeWidth={1.5} dot={false} name="HangSeng" />
           </LineChart>
         </ResponsiveContainer>
       </CardContent>

@@ -187,13 +187,19 @@ const Index = () => {
               csi300: metrics.csi300Annualized,
               avgBenchmark: metrics.avgBenchmarkAnnualized,
             }}
+            globalIndices={{
+              sp500: metrics.sp500Annualized,
+              nasdaq: metrics.nasdaqAnnualized,
+              ftse100: metrics.ftse100Annualized,
+              hangseng: metrics.hangsengAnnualized,
+            }}
             outperformance={metrics.annualizedOutperformance}
           />
         </div>
 
         <InvestmentBehaviorAnalysis data={data} />
 
-        <AnnualReturnsTable returns={annualReturns} />
+        <AnnualReturnsTable returns={annualReturns} data={data} />
       </div>
     </div>
   );

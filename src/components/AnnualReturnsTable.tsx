@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AnnualReturn } from "@/utils/portfolioAnalysis";
+import { AnnualReturn, PortfolioData } from "@/utils/portfolioAnalysis";
 
 interface AnnualReturnsTableProps {
   returns: AnnualReturn[];
+  data: PortfolioData[];
 }
 
-export function AnnualReturnsTable({ returns }: AnnualReturnsTableProps) {
+export function AnnualReturnsTable({ returns, data }: AnnualReturnsTableProps) {
   const getBestPerformer = (row: AnnualReturn) => {
     const indices = [
       { name: 'Fund', value: row.fundReturn },
@@ -20,6 +21,69 @@ export function AnnualReturnsTable({ returns }: AnnualReturnsTableProps) {
     ];
     return indices.reduce((best, current) => current.value > best.value ? current : best);
   };
+
+  // Calculate annualized returns for the whole period
+  const calculateAnnualizedReturns = () => {
+    if (data.length === 0) {
+      return {
+        fundAnnualized: 0,
+        shaAnnualized: 0,
+        sheAnnualized: 0,
+        csi300Annualized: 0,
+        sp500Annualized: 0,
+        nasdaqAnnualized: 0,
+        ftse100Annualized: 0,
+        hangsengAnnualized: 0,
+      };
+    }
+
+    const first = data[0];
+    const last = data[data.length - 1];
+    const years = (new Date(last.date).getTime() - new Date(first.date).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+
+    if (years <= 0) {
+      return {
+        fundAnnualized: 0,
+        shaAnnualized: 0,
+        sheAnnualized: 0,
+        csi300Annualized: 0,
+        sp500Annualized: 0,
+        nasdaqAnnualized: 0,
+        ftse100Annualized: 0,
+        hangsengAnnualized: 0,
+      };
+    }
+
+    return {
+      fundAnnualized: (Math.pow(last.shareValue / first.shareValue, 1 / years) - 1) * 100,
+      shaAnnualized: (Math.pow(last.sha / first.sha, 1 / years) - 1) * 100,
+      sheAnnualized: (Math.pow(last.she / first.she, 1 / years) - 1) * 100,
+      csi300Annualized: (Math.pow(last.csi300 / first.csi300, 1 / years) - 1) * 100,
+      sp500Annualized: first.sp500 > 0 && last.sp500 > 0 ? (Math.pow(last.sp500 / first.sp500, 1 / years) - 1) * 100 : 0,
+      nasdaqAnnualized: first.nasdaq > 0 && last.nasdaq > 0 ? (Math.pow(last.nasdaq / first.nasdaq, 1 / years) - 1) * 100 : 0,
+      ftse100Annualized: first.ftse100 > 0 && last.ftse100 > 0 ? (Math.pow(last.ftse100 / first.ftse100, 1 / years) - 1) * 100 : 0,
+      hangsengAnnualized: first.hangseng > 0 && last.hangseng > 0 ? (Math.pow(last.hangseng / first.hangseng, 1 / years) - 1) * 100 : 0,
+    };
+  };
+
+  const annualized = calculateAnnualizedReturns();
+
+  // Get best performer for annualized returns row
+  const getBestAnnualized = () => {
+    const indices = [
+      { name: 'Fund', value: annualized.fundAnnualized },
+      { name: 'SHA', value: annualized.shaAnnualized },
+      { name: 'SHE', value: annualized.sheAnnualized },
+      { name: 'CSI300', value: annualized.csi300Annualized },
+      { name: 'S&P500', value: annualized.sp500Annualized },
+      { name: 'Nasdaq', value: annualized.nasdaqAnnualized },
+      { name: 'FTSE100', value: annualized.ftse100Annualized },
+      { name: 'HangSeng', value: annualized.hangsengAnnualized },
+    ];
+    return indices.reduce((best, current) => (current.value > 0 && current.value > best.value) ? current : best);
+  };
+
+  const bestAnnualized = getBestAnnualized();
 
   return (
     <Card className="col-span-full">
@@ -78,6 +142,37 @@ export function AnnualReturnsTable({ returns }: AnnualReturnsTableProps) {
                 </TableRow>
               );
             })}
+            {/* Summary row with annualized returns */}
+            <TableRow className="bg-muted/50 font-bold">
+              <TableCell className="font-bold">Annualized Return</TableCell>
+              <TableCell className={`text-right font-bold ${annualized.fundAnnualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.fundAnnualized.toFixed(2)}%
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.shaAnnualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.shaAnnualized.toFixed(2)}%
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.sheAnnualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.sheAnnualized.toFixed(2)}%
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.csi300Annualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.csi300Annualized.toFixed(2)}%
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.sp500Annualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.sp500Annualized !== 0 ? `${annualized.sp500Annualized.toFixed(2)}%` : '-'}
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.nasdaqAnnualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.nasdaqAnnualized !== 0 ? `${annualized.nasdaqAnnualized.toFixed(2)}%` : '-'}
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.ftse100Annualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.ftse100Annualized !== 0 ? `${annualized.ftse100Annualized.toFixed(2)}%` : '-'}
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.hangsengAnnualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.hangsengAnnualized !== 0 ? `${annualized.hangsengAnnualized.toFixed(2)}%` : '-'}
+              </TableCell>
+              <TableCell className="text-right font-bold text-primary">
+                {bestAnnualized.name}
+              </TableCell>
+            </TableRow>
           </TableBody>
         </Table>
       </CardContent>

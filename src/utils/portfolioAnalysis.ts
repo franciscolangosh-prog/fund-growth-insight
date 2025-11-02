@@ -208,6 +208,12 @@ export function calculateOverallMetrics(data: PortfolioData[]) {
   const csi300Annualized = (Math.pow(last.csi300 / first.csi300, 1 / years) - 1) * 100;
   const avgBenchmarkAnnualized = (shaAnnualized + sheAnnualized + csi300Annualized) / 3;
 
+  // Calculate annualized global market indices returns
+  const sp500Annualized = first.sp500 > 0 && last.sp500 > 0 ? (Math.pow(last.sp500 / first.sp500, 1 / years) - 1) * 100 : 0;
+  const nasdaqAnnualized = first.nasdaq > 0 && last.nasdaq > 0 ? (Math.pow(last.nasdaq / first.nasdaq, 1 / years) - 1) * 100 : 0;
+  const ftse100Annualized = first.ftse100 > 0 && last.ftse100 > 0 ? (Math.pow(last.ftse100 / first.ftse100, 1 / years) - 1) * 100 : 0;
+  const hangsengAnnualized = first.hangseng > 0 && last.hangseng > 0 ? (Math.pow(last.hangseng / first.hangseng, 1 / years) - 1) * 100 : 0;
+
   return {
     totalReturn,
     annualizedReturn,
@@ -226,5 +232,10 @@ export function calculateOverallMetrics(data: PortfolioData[]) {
     csi300Annualized,
     avgBenchmarkAnnualized,
     annualizedOutperformance: annualizedReturn - avgBenchmarkAnnualized,
+    // Global market indices annualized returns
+    sp500Annualized,
+    nasdaqAnnualized,
+    ftse100Annualized,
+    hangsengAnnualized,
   };
 }
