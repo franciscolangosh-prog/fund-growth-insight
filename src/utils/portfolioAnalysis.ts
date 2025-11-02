@@ -32,14 +32,34 @@ export interface CorrelationData {
 export function parseCSV(csvText: string): PortfolioData[] {
   const lines = csvText.trim().split('\n');
   // Skip first 2 rows (Sheet name and header)
-  return lines.slice(2).map(line => {
+  const parsedData: PortfolioData[] = [];
+  let lastValues = {
+    sp500: 0,
+    nasdaq: 0,
+    ftse100: 0,
+    hangseng: 0,
+  };
+
+  lines.slice(2).forEach(line => {
     const values = line.split(',').map(v => v.trim());
     
     // Parse DD/MM/YYYY format to YYYY-MM-DD
     const dateParts = values[0].split('/');
     const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
     
-    return {
+    // Parse global indices, use previous value if missing
+    const sp500 = parseFloat(values[10]) || lastValues.sp500;
+    const nasdaq = parseFloat(values[11]) || lastValues.nasdaq;
+    const ftse100 = parseFloat(values[12]) || lastValues.ftse100;
+    const hangseng = parseFloat(values[13]) || lastValues.hangseng;
+    
+    // Update last values for next iteration
+    if (sp500 > 0) lastValues.sp500 = sp500;
+    if (nasdaq > 0) lastValues.nasdaq = nasdaq;
+    if (ftse100 > 0) lastValues.ftse100 = ftse100;
+    if (hangseng > 0) lastValues.hangseng = hangseng;
+    
+    const row = {
       date: formattedDate,
       sha: parseFloat(values[1]) || 0,
       she: parseFloat(values[2]) || 0,
@@ -50,12 +70,18 @@ export function parseCSV(csvText: string): PortfolioData[] {
       dailyGain: parseFloat(values[7].replace(/[()]/g, '').replace(',', '')) * (values[7].includes('(') ? -1 : 1) || 0,
       marketValue: parseFloat(values[8]) || 0,
       principle: parseFloat(values[9]) || 0,
-      sp500: parseFloat(values[10]) || 0,
-      nasdaq: parseFloat(values[11]) || 0,
-      ftse100: parseFloat(values[12]) || 0,
-      hangseng: parseFloat(values[13]) || 0,
+      sp500,
+      nasdaq,
+      ftse100,
+      hangseng,
     };
-  }).filter(row => row.shareValue > 0);
+    
+    if (row.shareValue > 0) {
+      parsedData.push(row);
+    }
+  });
+
+  return parsedData;
 }
 
 export function parsePortfolioData(data: any[]): PortfolioData[] {
