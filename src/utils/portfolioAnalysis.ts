@@ -4,6 +4,10 @@ export interface PortfolioData {
   sha: number;
   she: number;
   csi300: number;
+  sp500: number;
+  nasdaq: number;
+  ftse100: number;
+  hangseng: number;
   shares: number;
   gainLoss: number;
   dailyGain: number;
@@ -46,6 +50,10 @@ export function parseCSV(csvText: string): PortfolioData[] {
       dailyGain: parseFloat(values[7].replace(/[()]/g, '').replace(',', '')) * (values[7].includes('(') ? -1 : 1) || 0,
       marketValue: parseFloat(values[8]) || 0,
       principle: parseFloat(values[9]) || 0,
+      sp500: parseFloat(values[10]) || 0,
+      nasdaq: parseFloat(values[11]) || 0,
+      ftse100: parseFloat(values[12]) || 0,
+      hangseng: parseFloat(values[13]) || 0,
     };
   }).filter(row => row.shareValue > 0);
 }
@@ -62,6 +70,10 @@ export function parsePortfolioData(data: any[]): PortfolioData[] {
     dailyGain: parseFloat(row[7]) || 0,
     marketValue: parseFloat(row[8]) || 0,
     principle: parseFloat(row[9]) || 0,
+    sp500: parseFloat(row[10]) || 0,
+    nasdaq: parseFloat(row[11]) || 0,
+    ftse100: parseFloat(row[12]) || 0,
+    hangseng: parseFloat(row[13]) || 0,
   })).filter(row => row.shareValue > 0);
 }
 

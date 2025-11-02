@@ -27,6 +27,10 @@ export const savePortfolioToDatabase = async (
       sha: entry.sha,
       she: entry.she,
       csi300: entry.csi300,
+      sp500: entry.sp500,
+      nasdaq: entry.nasdaq,
+      ftse100: entry.ftse100,
+      hangseng: entry.hangseng,
     }));
 
     const { error: dataError } = await supabase
@@ -97,6 +101,10 @@ export const loadPortfolioFromDatabase = async (
         sha: Number(entry.sha),
         she: Number(entry.she),
         csi300: Number(entry.csi300),
+        sp500: Number(entry.sp500) || 0,
+        nasdaq: Number(entry.nasdaq) || 0,
+        ftse100: Number(entry.ftse100) || 0,
+        hangseng: Number(entry.hangseng) || 0,
         shares,
         gainLoss,
         dailyGain,
@@ -134,6 +142,10 @@ export const addPortfolioRecord = async (
     sha: number;
     she: number;
     csi300: number;
+    sp500?: number;
+    nasdaq?: number;
+    ftse100?: number;
+    hangseng?: number;
   }
 ) => {
   try {
@@ -147,6 +159,10 @@ export const addPortfolioRecord = async (
         sha: record.sha,
         she: record.she,
         csi300: record.csi300,
+        sp500: record.sp500 || 0,
+        nasdaq: record.nasdaq || 0,
+        ftse100: record.ftse100 || 0,
+        hangseng: record.hangseng || 0,
       });
 
     if (error) throw error;
@@ -165,6 +181,10 @@ export const updatePortfolioRecord = async (
     sha: number;
     she: number;
     csi300: number;
+    sp500?: number;
+    nasdaq?: number;
+    ftse100?: number;
+    hangseng?: number;
   }
 ) => {
   try {
@@ -176,6 +196,10 @@ export const updatePortfolioRecord = async (
         sha: record.sha,
         she: record.she,
         csi300: record.csi300,
+        sp500: record.sp500 || 0,
+        nasdaq: record.nasdaq || 0,
+        ftse100: record.ftse100 || 0,
+        hangseng: record.hangseng || 0,
       })
       .eq('id', recordId);
 
