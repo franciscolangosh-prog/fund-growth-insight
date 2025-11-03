@@ -154,7 +154,7 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
           Add/Edit Records
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-[90vw]">
+      <DialogContent className="max-w-[95vw] max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Add/Edit Records</DialogTitle>
           <DialogDescription>
@@ -178,27 +178,27 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
         </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="max-h-[60vh] overflow-y-auto overflow-x-auto border rounded-md">
+            <div className="max-h-[50vh] overflow-auto border rounded-md">
               <table className="w-full caption-bottom text-sm">
                 <thead className="sticky top-0 z-10 bg-background border-b [&_tr]:border-b">
                   <tr className="border-b transition-colors hover:bg-muted/50">
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[280px] bg-background">Date</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[180px] bg-background">Principle</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[180px] bg-background">Share Value</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">SHA</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">SHE</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">CSI300</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">S&P500</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">Nasdaq</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">FTSE100</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">HangSeng</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground bg-background w-[100px]" />
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground text-xs min-w-[140px] bg-background">Date</th>
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground text-xs min-w-[110px] bg-background">Principle</th>
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground text-xs min-w-[110px] bg-background">Share Value</th>
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground text-xs min-w-[100px] bg-background">SHA</th>
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground text-xs min-w-[100px] bg-background">SHE</th>
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground text-xs min-w-[100px] bg-background">CSI300</th>
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground text-xs min-w-[100px] bg-background">S&P500</th>
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground text-xs min-w-[100px] bg-background">Nasdaq</th>
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground text-xs min-w-[100px] bg-background">FTSE100</th>
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground text-xs min-w-[100px] bg-background">HangSeng</th>
+                    <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground text-xs bg-background w-[80px]" />
                   </tr>
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
                   {fields.map((field, index) => (
                     <tr key={field.id} className="border-b transition-colors hover:bg-muted/50">
-                      <td className="p-4 align-middle">
+                      <td className="p-2 align-middle">
                         {field.isEditing ? (
                           <FormField
                             control={form.control}
@@ -209,12 +209,12 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
                                   <Button
                                     variant="outline"
                                     className={cn(
-                                      "w-[240px] justify-start text-left font-normal",
+                                      "w-[130px] justify-start text-left font-normal text-xs",
                                       !field.value && "text-muted-foreground"
                                     )}
                                   >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                    <CalendarIcon className="mr-1 h-3 w-3" />
+                                    {field.value ? format(field.value, "MM/dd/yy") : <span>Pick</span>}
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0">
@@ -229,145 +229,147 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
                             )}
                           />
                         ) : (
-                          format(field.date, "PPP")
+                          <span className="text-xs">{format(field.date, "MM/dd/yy")}</span>
                         )}
                       </td>
-                      <td className="p-4 align-middle">
+                      <td className="p-2 align-middle">
                         {field.isEditing ? (
                           <FormField
                             control={form.control}
                             name={`records.${index}.principle`}
                             render={({ field }) => (
-                              <Input type="number" className="w-full" {...field} />
+                              <Input type="number" className="w-full text-xs h-8" {...field} />
                             )}
                           />
                         ) : (
-                          field.principle
+                          <span className="text-xs">{field.principle}</span>
                         )}
                       </td>
-                      <td className="p-4 align-middle">
+                      <td className="p-2 align-middle">
                         {field.isEditing ? (
                           <FormField
                             control={form.control}
                             name={`records.${index}.shareValue`}
                             render={({ field }) => (
-                              <Input type="number" step="0.0001" className="w-full" {...field} />
+                              <Input type="number" step="0.0001" className="w-full text-xs h-8" {...field} />
                             )}
                           />
                         ) : (
-                          field.shareValue
+                          <span className="text-xs">{field.shareValue}</span>
                         )}
                       </td>
-                      <td className="p-4 align-middle">
+                      <td className="p-2 align-middle">
                         {field.isEditing ? (
                           <FormField
                             control={form.control}
                             name={`records.${index}.sha`}
                             render={({ field }) => (
-                              <Input type="number" step="0.01" className="w-full" {...field} />
+                              <Input type="number" step="0.01" className="w-full text-xs h-8" {...field} />
                             )}
                           />
                         ) : (
-                          field.sha
+                          <span className="text-xs">{field.sha}</span>
                         )}
                       </td>
-                      <td className="p-4 align-middle">
+                      <td className="p-2 align-middle">
                         {field.isEditing ? (
                           <FormField
                             control={form.control}
                             name={`records.${index}.she`}
                             render={({ field }) => (
-                              <Input type="number" step="0.01" className="w-full" {...field} />
+                              <Input type="number" step="0.01" className="w-full text-xs h-8" {...field} />
                             )}
                           />
                         ) : (
-                          field.she
+                          <span className="text-xs">{field.she}</span>
                         )}
                       </td>
-                      <td className="p-4 align-middle">
+                      <td className="p-2 align-middle">
                         {field.isEditing ? (
                           <FormField
                             control={form.control}
                             name={`records.${index}.csi300`}
                             render={({ field }) => (
-                              <Input type="number" step="0.01" className="w-full" {...field} />
+                              <Input type="number" step="0.01" className="w-full text-xs h-8" {...field} />
                             )}
                           />
                         ) : (
-                          field.csi300
+                          <span className="text-xs">{field.csi300}</span>
                         )}
                       </td>
-                      <td className="p-4 align-middle">
+                      <td className="p-2 align-middle">
                         {field.isEditing ? (
                           <FormField
                             control={form.control}
                             name={`records.${index}.sp500`}
                             render={({ field }) => (
-                              <Input type="number" step="0.01" className="w-full" {...field} />
+                              <Input type="number" step="0.01" className="w-full text-xs h-8" {...field} />
                             )}
                           />
                         ) : (
-                          field.sp500 ?? '-'
+                          <span className="text-xs">{field.sp500 ?? '-'}</span>
                         )}
                       </td>
-                      <td className="p-4 align-middle">
+                      <td className="p-2 align-middle">
                         {field.isEditing ? (
                           <FormField
                             control={form.control}
                             name={`records.${index}.nasdaq`}
                             render={({ field }) => (
-                              <Input type="number" step="0.01" className="w-full" {...field} />
+                              <Input type="number" step="0.01" className="w-full text-xs h-8" {...field} />
                             )}
                           />
                         ) : (
-                          field.nasdaq ?? '-'
+                          <span className="text-xs">{field.nasdaq ?? '-'}</span>
                         )}
                       </td>
-                      <td className="p-4 align-middle">
+                      <td className="p-2 align-middle">
                         {field.isEditing ? (
                           <FormField
                             control={form.control}
                             name={`records.${index}.ftse100`}
                             render={({ field }) => (
-                              <Input type="number" step="0.01" className="w-full" {...field} />
+                              <Input type="number" step="0.01" className="w-full text-xs h-8" {...field} />
                             )}
                           />
                         ) : (
-                          field.ftse100 ?? '-'
+                          <span className="text-xs">{field.ftse100 ?? '-'}</span>
                         )}
                       </td>
-                      <td className="p-4 align-middle">
+                      <td className="p-2 align-middle">
                         {field.isEditing ? (
                           <FormField
                             control={form.control}
                             name={`records.${index}.hangseng`}
                             render={({ field }) => (
-                              <Input type="number" step="0.01" className="w-full" {...field} />
+                              <Input type="number" step="0.01" className="w-full text-xs h-8" {...field} />
                             )}
                           />
                         ) : (
-                          field.hangseng ?? '-'
+                          <span className="text-xs">{field.hangseng ?? '-'}</span>
                         )}
                       </td>
-                      <td className="p-4 align-middle">
-                        <div className="flex gap-2">
+                      <td className="p-2 align-middle">
+                        <div className="flex gap-1">
                         {!field.isEditing && (
                           <Button
                             type="button"
                             variant="ghost"
-                            size="sm"
+                            size="icon"
+                            className="h-7 w-7"
                             onClick={() => update(index, { ...field, isEditing: true })}
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-3 w-3" />
                           </Button>
                         )}
                         <Button
                           type="button"
                           variant="ghost"
-                          size="sm"
+                          size="icon"
+                          className="h-7 w-7"
                           onClick={() => remove(index)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                         </div>
                       </td>
