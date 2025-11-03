@@ -36,6 +36,10 @@ const recordSchema = z.object({
   sha: z.coerce.number(),
   she: z.coerce.number(),
   csi300: z.coerce.number(),
+  sp500: z.coerce.number().optional(),
+  nasdaq: z.coerce.number().optional(),
+  ftse100: z.coerce.number().optional(),
+  hangseng: z.coerce.number().optional(),
   isEditing: z.boolean().optional(),
 });
 
@@ -83,6 +87,10 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
           sha: Number(d.sha),
           she: Number(d.she),
           csi300: Number(d.csi300),
+          sp500: d.sp500 ? Number(d.sp500) : undefined,
+          nasdaq: d.nasdaq ? Number(d.nasdaq) : undefined,
+          ftse100: d.ftse100 ? Number(d.ftse100) : undefined,
+          hangseng: d.hangseng ? Number(d.hangseng) : undefined,
           isEditing: false,
         })));
       }
@@ -104,6 +112,10 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
           sha: record.sha,
           she: record.she,
           csi300: record.csi300,
+          sp500: record.sp500,
+          nasdaq: record.nasdaq,
+          ftse100: record.ftse100,
+          hangseng: record.hangseng,
         });
         if (success) {
           toast.success(`Record for ${dateStr} updated successfully`);
@@ -118,6 +130,10 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
           sha: record.sha,
           she: record.she,
           csi300: record.csi300,
+          sp500: record.sp500,
+          nasdaq: record.nasdaq,
+          ftse100: record.ftse100,
+          hangseng: record.hangseng,
         });
         if (success) {
           toast.success(`Record for ${dateStr} added successfully`);
@@ -154,7 +170,7 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
           <Button
             type="button"
             variant="outline"
-            onClick={() => append({ date: new Date(), principle: 0, shareValue: 0, sha: 0, she: 0, csi300: 0, isEditing: true })}
+            onClick={() => append({ date: new Date(), principle: 0, shareValue: 0, sha: 0, she: 0, csi300: 0, sp500: 0, nasdaq: 0, ftse100: 0, hangseng: 0, isEditing: true })}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Row
@@ -172,6 +188,10 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">SHA</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">SHE</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">CSI300</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">S&P500</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">Nasdaq</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">FTSE100</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground min-w-[150px] bg-background">HangSeng</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground bg-background w-[100px]" />
                   </tr>
                 </thead>
@@ -275,6 +295,58 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
                           />
                         ) : (
                           field.csi300
+                        )}
+                      </td>
+                      <td className="p-4 align-middle">
+                        {field.isEditing ? (
+                          <FormField
+                            control={form.control}
+                            name={`records.${index}.sp500`}
+                            render={({ field }) => (
+                              <Input type="number" step="0.01" className="w-full" {...field} />
+                            )}
+                          />
+                        ) : (
+                          field.sp500 ?? '-'
+                        )}
+                      </td>
+                      <td className="p-4 align-middle">
+                        {field.isEditing ? (
+                          <FormField
+                            control={form.control}
+                            name={`records.${index}.nasdaq`}
+                            render={({ field }) => (
+                              <Input type="number" step="0.01" className="w-full" {...field} />
+                            )}
+                          />
+                        ) : (
+                          field.nasdaq ?? '-'
+                        )}
+                      </td>
+                      <td className="p-4 align-middle">
+                        {field.isEditing ? (
+                          <FormField
+                            control={form.control}
+                            name={`records.${index}.ftse100`}
+                            render={({ field }) => (
+                              <Input type="number" step="0.01" className="w-full" {...field} />
+                            )}
+                          />
+                        ) : (
+                          field.ftse100 ?? '-'
+                        )}
+                      </td>
+                      <td className="p-4 align-middle">
+                        {field.isEditing ? (
+                          <FormField
+                            control={form.control}
+                            name={`records.${index}.hangseng`}
+                            render={({ field }) => (
+                              <Input type="number" step="0.01" className="w-full" {...field} />
+                            )}
+                          />
+                        ) : (
+                          field.hangseng ?? '-'
                         )}
                       </td>
                       <td className="p-4 align-middle">
