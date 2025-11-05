@@ -32,13 +32,6 @@ const recordFormSchema = z.object({
   }),
   principle: z.coerce.number().positive("Principle must be positive"),
   shareValue: z.coerce.number().positive("Share value must be positive"),
-  sha: z.coerce.number(),
-  she: z.coerce.number(),
-  csi300: z.coerce.number(),
-  sp500: z.coerce.number().optional(),
-  nasdaq: z.coerce.number().optional(),
-  ftse100: z.coerce.number().optional(),
-  hangseng: z.coerce.number().optional(),
 });
 
 type RecordFormValues = z.infer<typeof recordFormSchema>;
@@ -64,13 +57,6 @@ export function RecordFormDialog({
       date: new Date(),
       principle: 0,
       shareValue: 0,
-      sha: 0,
-      she: 0,
-      csi300: 0,
-      sp500: 0,
-      nasdaq: 0,
-      ftse100: 0,
-      hangseng: 0,
     },
   });
 
@@ -82,13 +68,6 @@ export function RecordFormDialog({
         date: new Date(),
         principle: 0,
         shareValue: 0,
-        sha: 0,
-        she: 0,
-        csi300: 0,
-        sp500: 0,
-        nasdaq: 0,
-        ftse100: 0,
-        hangseng: 0,
       });
     }
   }, [open, initialValues, mode, form]);
@@ -100,13 +79,11 @@ export function RecordFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{mode === "add" ? "Add New Record" : "Edit Record"}</DialogTitle>
           <DialogDescription>
-            {mode === "add" 
-              ? "Fill in the details for the new record." 
-              : "Update the record details below."}
+            Enter your portfolio data. Market indices will be automatically populated from our centralized database.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -175,114 +152,6 @@ export function RecordFormDialog({
                   </FormItem>
                 )}
               />
-            </div>
-
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium">China Markets</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="sha"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SHA</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="she"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SHE</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="csi300"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CSI300</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium">Global Markets</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="sp500"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>S&P 500</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="nasdaq"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nasdaq</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="ftse100"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>FTSE 100</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="hangseng"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Hang Seng</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
             </div>
 
             <DialogFooter>
