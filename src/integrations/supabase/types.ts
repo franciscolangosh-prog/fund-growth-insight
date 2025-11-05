@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      market_indices: {
+        Row: {
+          created_at: string
+          csi300: number | null
+          date: string
+          ftse100: number | null
+          hangseng: number | null
+          id: string
+          nasdaq: number | null
+          sha: number | null
+          she: number | null
+          sp500: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          csi300?: number | null
+          date: string
+          ftse100?: number | null
+          hangseng?: number | null
+          id?: string
+          nasdaq?: number | null
+          sha?: number | null
+          she?: number | null
+          sp500?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          csi300?: number | null
+          date?: string
+          ftse100?: number | null
+          hangseng?: number | null
+          id?: string
+          nasdaq?: number | null
+          sha?: number | null
+          she?: number | null
+          sp500?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       portfolio_data: {
         Row: {
           created_at: string

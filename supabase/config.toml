@@ -1,1 +1,7 @@
 project_id = "iigwtsthbbpufchbjmur"
+
+[functions.fetch-market-data]
+verify_jwt = false
+
+[functions.migrate-market-data]
+verify_jwt = false
