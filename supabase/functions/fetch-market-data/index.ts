@@ -83,55 +83,79 @@ Deno.serve(async (req) => {
 });
 
 /**
- * Fetches market data from various APIs
- * TODO: Implement actual API calls
- * 
- * Recommended free APIs:
- * - Yahoo Finance (via yfinance or similar)
- * - Alpha Vantage (free tier available)
- * - Financial Modeling Prep
+ * Fetches market data from Yahoo Finance API (free, no API key required)
  */
 async function fetchMarketDataFromAPIs(date: string): Promise<MarketData> {
-  // Placeholder implementation
-  // In production, this should make actual API calls to fetch real market data
+  console.log(`Fetching real market data for ${date}`);
   
-  console.log('PLACEHOLDER: Replace with actual API calls');
-  
-  // Example structure for real implementation:
-  /*
-  const [sha, she, csi300, sp500, nasdaq, ftse100, hangseng] = await Promise.all([
-    fetchIndexData('000001.SS', date), // Shanghai Composite
-    fetchIndexData('399001.SZ', date), // Shenzhen Component
-    fetchIndexData('000300.SS', date), // CSI 300
-    fetchIndexData('^GSPC', date),     // S&P 500
-    fetchIndexData('^IXIC', date),     // Nasdaq
-    fetchIndexData('^FTSE', date),     // FTSE 100
-    fetchIndexData('^HSI', date),      // Hang Seng
-  ]);
-  */
+  try {
+    const results = await Promise.allSettled([
+      fetchYahooFinanceData('000001.SS', date), // Shanghai Composite
+      fetchYahooFinanceData('399001.SZ', date), // Shenzhen Component
+      fetchYahooFinanceData('000300.SS', date), // CSI 300
+      fetchYahooFinanceData('%5EGSPC', date),   // S&P 500
+      fetchYahooFinanceData('%5EIXIC', date),   // Nasdaq
+      fetchYahooFinanceData('%5EFTSE', date),   // FTSE 100
+      fetchYahooFinanceData('%5EHSI', date),    // Hang Seng
+    ]);
 
-  return {
-    date,
-    // Return undefined values for now - to be replaced with actual API data
-    sha: undefined,
-    she: undefined,
-    csi300: undefined,
-    sp500: undefined,
-    nasdaq: undefined,
-    ftse100: undefined,
-    hangseng: undefined,
-  };
+    return {
+      date,
+      sha: results[0].status === 'fulfilled' ? results[0].value : undefined,
+      she: results[1].status === 'fulfilled' ? results[1].value : undefined,
+      csi300: results[2].status === 'fulfilled' ? results[2].value : undefined,
+      sp500: results[3].status === 'fulfilled' ? results[3].value : undefined,
+      nasdaq: results[4].status === 'fulfilled' ? results[4].value : undefined,
+      ftse100: results[5].status === 'fulfilled' ? results[5].value : undefined,
+      hangseng: results[6].status === 'fulfilled' ? results[6].value : undefined,
+    };
+  } catch (error) {
+    console.error('Error fetching market data:', error);
+    throw error;
+  }
 }
 
-// Example helper function for fetching individual index data
-// async function fetchIndexData(symbol: string, date: string): Promise<number | null> {
-//   try {
-//     // Example using Yahoo Finance API or similar
-//     const response = await fetch(`https://api.example.com/quote/${symbol}?date=${date}`);
-//     const data = await response.json();
-//     return data.close;
-//   } catch (error) {
-//     console.error(`Error fetching ${symbol}:`, error);
-//     return null;
-//   }
-// }
+/**
+ * Fetches index data from Yahoo Finance query API
+ * Uses the public query1.finance.yahoo.com endpoint (no API key required)
+ */
+async function fetchYahooFinanceData(symbol: string, date: string): Promise<number | undefined> {
+  try {
+    // Convert date to timestamps
+    const targetDate = new Date(date);
+    const period1 = Math.floor(targetDate.getTime() / 1000);
+    const period2 = period1 + 86400; // Add 1 day
+
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=1d`;
+    
+    console.log(`Fetching ${symbol} from Yahoo Finance...`);
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`Yahoo Finance API error for ${symbol}: ${response.status}`);
+      return undefined;
+    }
+
+    const data = await response.json();
+    
+    // Extract close price from Yahoo Finance response
+    const result = data?.chart?.result?.[0];
+    const closePrice = result?.indicators?.quote?.[0]?.close?.[0];
+    
+    if (closePrice && !isNaN(closePrice)) {
+      console.log(`${symbol}: ${closePrice}`);
+      return closePrice;
+    }
+    
+    console.warn(`No valid price data for ${symbol}`);
+    return undefined;
+  } catch (error) {
+    console.error(`Error fetching ${symbol}:`, error);
+    return undefined;
+  }
+}

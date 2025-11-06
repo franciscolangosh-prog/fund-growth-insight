@@ -19,23 +19,40 @@ Deno.serve(async (req) => {
 
     console.log('Starting market data migration...');
 
-    // Fetch all unique market data from portfolio_data
-    const { data: portfolioData, error: fetchError } = await supabaseClient
-      .from('portfolio_data')
-      .select('date, sha, she, csi300, sp500, nasdaq, ftse100, hangseng')
-      .order('date');
+    // Fetch ALL records from portfolio_data with pagination
+    let allPortfolioData: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-    if (fetchError) {
-      console.error('Error fetching portfolio data:', fetchError);
-      throw fetchError;
+    while (hasMore) {
+      const { data: portfolioData, error: fetchError } = await supabaseClient
+        .from('portfolio_data')
+        .select('date, sha, she, csi300, sp500, nasdaq, ftse100, hangseng')
+        .order('date')
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (fetchError) {
+        console.error('Error fetching portfolio data:', fetchError);
+        throw fetchError;
+      }
+
+      if (portfolioData && portfolioData.length > 0) {
+        allPortfolioData = allPortfolioData.concat(portfolioData);
+        console.log(`Fetched page ${page + 1}: ${portfolioData.length} records (total: ${allPortfolioData.length})`);
+        hasMore = portfolioData.length === pageSize;
+        page++;
+      } else {
+        hasMore = false;
+      }
     }
 
-    console.log(`Found ${portfolioData.length} portfolio records`);
+    console.log(`Found ${allPortfolioData.length} total portfolio records`);
 
     // Group by date and take the most recent values for each date
     const marketDataByDate = new Map();
     
-    for (const record of portfolioData) {
+    for (const record of allPortfolioData) {
       const dateKey = record.date;
       if (!marketDataByDate.has(dateKey)) {
         marketDataByDate.set(dateKey, {
