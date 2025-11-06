@@ -197,7 +197,7 @@ export function DataMigrationPanel() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Failed to fetch market data. This is expected as the API integration is not yet configured.
+                Failed to fetch market data. Check the console for details.
               </AlertDescription>
             </Alert>
           )}
@@ -205,11 +205,11 @@ export function DataMigrationPanel() {
 
         {/* Instructions */}
         <div className="pt-4 border-t">
-          <h3 className="text-sm font-semibold mb-2">Next Steps</h3>
+          <h3 className="text-sm font-semibold mb-2">Status</h3>
           <ul className="text-sm text-muted-foreground space-y-2">
-            <li>1. Run the migration to populate the market_indices table</li>
-            <li>2. Set up daily cron job to automatically fetch market data</li>
-            <li>3. Configure real market data API in the edge function</li>
+            <li>✅ Daily cron job configured (runs at 6 AM UTC)</li>
+            <li>✅ Yahoo Finance API integrated (free, no API key needed)</li>
+            <li>📝 Run migration above to populate historical data</li>
           </ul>
         </div>
       </CardContent>
