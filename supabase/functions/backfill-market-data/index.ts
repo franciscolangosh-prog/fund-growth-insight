@@ -1,0 +1,181 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+interface MarketData {
+  date: string;
+  sha: number | undefined;
+  she: number | undefined;
+  csi300: number | undefined;
+  sp500?: number | undefined;
+  nasdaq?: number | undefined;
+  ftse100?: number | undefined;
+  hangseng?: number | undefined;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const { startDate, endDate } = await req.json();
+    
+    if (!startDate || !endDate) {
+      throw new Error('startDate and endDate are required');
+    }
+
+    console.log(`Backfilling market data from ${startDate} to ${endDate}`);
+
+    // Generate array of dates between start and end
+    const dates: string[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+      dates.push(date.toISOString().split('T')[0]);
+    }
+
+    console.log(`Processing ${dates.length} dates`);
+
+    let successCount = 0;
+    let failCount = 0;
+
+    // Process dates in batches to avoid overwhelming the API
+    const batchSize = 5;
+    for (let i = 0; i < dates.length; i += batchSize) {
+      const batch = dates.slice(i, i + batchSize);
+      
+      const results = await Promise.allSettled(
+        batch.map(async (date) => {
+          const marketData = await fetchMarketDataFromAPIs(date);
+          
+          const { error } = await supabaseClient
+            .from('market_indices')
+            .upsert({ ...marketData, date }, { onConflict: 'date' });
+
+          if (error) {
+            console.error(`Error upserting data for ${date}:`, error);
+            throw error;
+          }
+
+          console.log(`✓ Processed ${date}`);
+          return date;
+        })
+      );
+
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      });
+
+      // Small delay between batches
+      if (i + batchSize < dates.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    console.log(`Backfill complete: ${successCount} successful, ${failCount} failed`);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        processed: dates.length,
+        successful: successCount,
+        failed: failCount
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Error in backfill-market-data function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
+});
+
+async function fetchMarketDataFromAPIs(date: string): Promise<Omit<MarketData, 'date'>> {
+  const symbols = {
+    sha: '000001.SS',
+    she: '399001.SZ',
+    csi300: '000300.SS',
+    sp500: '^GSPC',
+    nasdaq: '^IXIC',
+    ftse100: '^FTSE',
+    hangseng: '^HSI'
+  };
+
+  const results = await Promise.allSettled(
+    Object.entries(symbols).map(async ([key, symbol]) => {
+      const value = await fetchYahooFinanceData(symbol, date);
+      return { key, value };
+    })
+  );
+
+  const marketData: Omit<MarketData, 'date'> = {
+    sha: undefined,
+    she: undefined,
+    csi300: undefined,
+    sp500: undefined,
+    nasdaq: undefined,
+    ftse100: undefined,
+    hangseng: undefined,
+  };
+
+  results.forEach((result) => {
+    if (result.status === 'fulfilled') {
+      const { key, value } = result.value;
+      marketData[key as keyof Omit<MarketData, 'date'>] = value;
+    }
+  });
+
+  return marketData;
+}
+
+async function fetchYahooFinanceData(symbol: string, date: string): Promise<number | undefined> {
+  try {
+    const targetDate = new Date(date);
+    const startTimestamp = Math.floor(targetDate.getTime() / 1000);
+    const endTimestamp = startTimestamp + 86400; // +1 day
+
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${startTimestamp}&period2=${endTimestamp}&interval=1d`;
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.warn(`Yahoo Finance API error for ${symbol}: ${response.status}`);
+      return undefined;
+    }
+
+    const data = await response.json();
+    
+    if (!data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.[0]) {
+      console.warn(`No data available for ${symbol} on ${date}`);
+      return undefined;
+    }
+
+    const closePrice = data.chart.result[0].indicators.quote[0].close[0];
+    return closePrice;
+
+  } catch (error) {
+    console.error(`Error fetching ${symbol}:`, error);
+    return undefined;
+  }
+}

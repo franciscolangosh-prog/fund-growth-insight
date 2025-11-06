@@ -137,3 +137,25 @@ export async function migrateMarketData(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Backfills market data for a date range
+ */
+export async function backfillMarketData(startDate: string, endDate: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.functions.invoke('backfill-market-data', {
+      body: { startDate, endDate },
+    });
+
+    if (error) {
+      console.error('Error backfilling market data:', error);
+      return false;
+    }
+
+    console.log('Market data backfill completed:', data);
+    return true;
+  } catch (error) {
+    console.error('Error calling backfill-market-data function:', error);
+    return false;
+  }
+}

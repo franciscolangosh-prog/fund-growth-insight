@@ -3,13 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Database, Download, CheckCircle, AlertCircle } from "lucide-react";
-import { migrateMarketData, fetchLatestMarketData } from "@/utils/marketDataService";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Database, Download, CheckCircle, AlertCircle, Calendar, RefreshCw } from "lucide-react";
+import { migrateMarketData, fetchLatestMarketData, backfillMarketData } from "@/utils/marketDataService";
 import { useToast } from "@/hooks/use-toast";
 
 export function DataMigrationPanel() {
   const [migrationStatus, setMigrationStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
   const [fetchStatus, setFetchStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+  const [backfillStatus, setBackfillStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+  const [startDate, setStartDate] = useState('2025-10-09');
+  const [endDate, setEndDate] = useState('2025-11-05');
   const { toast } = useToast();
 
   const handleMigration = async () => {
@@ -71,6 +76,45 @@ export function DataMigrationPanel() {
       toast({
         title: "Fetch Error",
         description: "An unexpected error occurred while fetching data.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBackfillData = async () => {
+    if (!startDate || !endDate) {
+      toast({
+        title: "Invalid Dates",
+        description: "Please provide both start and end dates.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBackfillStatus('running');
+    
+    try {
+      const success = await backfillMarketData(startDate, endDate);
+      
+      if (success) {
+        setBackfillStatus('success');
+        toast({
+          title: "Backfill Complete",
+          description: `Market data from ${startDate} to ${endDate} has been fetched.`,
+        });
+      } else {
+        setBackfillStatus('error');
+        toast({
+          title: "Backfill Failed",
+          description: "Failed to backfill market data. Check console for details.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      setBackfillStatus('error');
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred during backfill.",
         variant: "destructive",
       });
     }
@@ -198,6 +242,82 @@ export function DataMigrationPanel() {
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 Failed to fetch market data. Check the console for details.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+
+        {/* Backfill Section */}
+        <div className="pt-4 border-t">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Backfill Missing Data
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Fetch market data for a specific date range to fill gaps in historical data.
+          </p>
+          
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <Label htmlFor="start-date" className="text-sm">Start Date</Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                disabled={backfillStatus === 'running'}
+              />
+            </div>
+            <div>
+              <Label htmlFor="end-date" className="text-sm">End Date</Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                disabled={backfillStatus === 'running'}
+              />
+            </div>
+          </div>
+
+          <Button 
+            onClick={handleBackfillData}
+            disabled={backfillStatus === 'running'}
+            className="w-full"
+            variant="outline"
+          >
+            {backfillStatus === 'running' ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Backfilling...
+              </>
+            ) : backfillStatus === 'success' ? (
+              <>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Backfill Complete
+              </>
+            ) : (
+              <>
+                <Calendar className="mr-2 h-4 w-4" />
+                Backfill Date Range
+              </>
+            )}
+          </Button>
+
+          {backfillStatus === 'success' && (
+            <Alert className="mt-4">
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>
+                Successfully backfilled market data for the specified date range.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {backfillStatus === 'error' && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Failed to backfill market data. Check the console for details.
               </AlertDescription>
             </Alert>
           )}
