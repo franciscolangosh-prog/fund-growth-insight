@@ -113,18 +113,26 @@ Deno.serve(async (req) => {
 
 async function fetchMarketDataFromAPIs(date: string): Promise<Omit<MarketData, 'date'>> {
   const symbols = {
-    sha: '000001.SS',
-    she: '399001.SZ',
-    csi300: '000300.SS',
-    sp500: '^GSPC',
-    nasdaq: '^IXIC',
-    ftse100: '^FTSE',
-    hangseng: '^HSI'
+    sha: { yahoo: '000001.SS', alpha: '000001.SS' },
+    she: { yahoo: '399001.SZ', alpha: '399001.SZ' },
+    csi300: { yahoo: '000300.SS', alpha: '000300.SS' },
+    sp500: { yahoo: '^GSPC', alpha: 'SPX' },
+    nasdaq: { yahoo: '^IXIC', alpha: 'IXIC' },
+    ftse100: { yahoo: '^FTSE', alpha: 'FTSE' },
+    hangseng: { yahoo: '^HSI', alpha: 'HSI' }
   };
 
   const results = await Promise.allSettled(
     Object.entries(symbols).map(async ([key, symbol]) => {
-      const value = await fetchYahooFinanceData(symbol, date);
+      // Try Yahoo Finance first
+      let value = await fetchYahooFinanceData(symbol.yahoo, date);
+      
+      // If Yahoo fails, try Alpha Vantage as fallback
+      if (value === undefined) {
+        console.log(`Yahoo Finance failed for ${key}, trying Alpha Vantage...`);
+        value = await fetchAlphaVantageData(symbol.alpha, date);
+      }
+      
       return { key, value };
     })
   );
@@ -176,6 +184,49 @@ async function fetchYahooFinanceData(symbol: string, date: string): Promise<numb
 
   } catch (error) {
     console.error(`Error fetching ${symbol}:`, error);
+    return undefined;
+  }
+}
+
+async function fetchAlphaVantageData(symbol: string, date: string): Promise<number | undefined> {
+  try {
+    const apiKey = Deno.env.get('ALPHA_VANTAGE_API_KEY');
+    if (!apiKey) {
+      console.warn('Alpha Vantage API key not configured');
+      return undefined;
+    }
+
+    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`;
+    
+    console.log(`Fetching ${symbol} from Alpha Vantage...`);
+    
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.error(`Alpha Vantage API error for ${symbol}: ${response.status}`);
+      return undefined;
+    }
+
+    const data = await response.json();
+    
+    if (data['Error Message'] || data['Note']) {
+      console.warn(`Alpha Vantage issue for ${symbol}:`, data['Error Message'] || data['Note']);
+      return undefined;
+    }
+    
+    const timeSeries = data['Time Series (Daily)'];
+    if (timeSeries && timeSeries[date]) {
+      const closePrice = parseFloat(timeSeries[date]['4. close']);
+      if (!isNaN(closePrice)) {
+        console.log(`${symbol} (Alpha Vantage): ${closePrice}`);
+        return closePrice;
+      }
+    }
+    
+    console.warn(`No valid price data for ${symbol} on ${date} from Alpha Vantage`);
+    return undefined;
+  } catch (error) {
+    console.error(`Error fetching ${symbol} from Alpha Vantage:`, error);
     return undefined;
   }
 }
