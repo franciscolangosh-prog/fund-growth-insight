@@ -58,16 +58,30 @@ Deno.serve(async (req) => {
         batch.map(async (date) => {
           const marketData = await fetchMarketDataFromAPIs(date);
           
-          const { error } = await supabaseClient
-            .from('market_indices')
-            .upsert({ ...marketData, date }, { onConflict: 'date' });
+          // Only include fields that have actual values (not undefined)
+          const dataToUpsert: Record<string, any> = { date };
+          Object.entries(marketData).forEach(([key, value]) => {
+            if (value !== undefined) {
+              dataToUpsert[key] = value;
+            }
+          });
 
-          if (error) {
-            console.error(`Error upserting data for ${date}:`, error);
-            throw error;
+          // Only upsert if we have at least one market value
+          if (Object.keys(dataToUpsert).length > 1) {
+            const { error } = await supabaseClient
+              .from('market_indices')
+              .upsert(dataToUpsert, { onConflict: 'date' });
+
+            if (error) {
+              console.error(`Error upserting data for ${date}:`, error);
+              throw error;
+            }
+
+            console.log(`✓ Processed ${date} with ${Object.keys(dataToUpsert).length - 1} values`);
+          } else {
+            console.warn(`⚠ No market data available for ${date}, skipping upsert`);
           }
-
-          console.log(`✓ Processed ${date}`);
+          
           return date;
         })
       );

@@ -39,34 +39,35 @@ Deno.serve(async (req) => {
     
     const marketData: MarketData = await fetchMarketDataFromAPIs(targetDate);
 
-    // Upsert market data
-    const { data, error } = await supabaseClient
-      .from('market_indices')
-      .upsert(
-        {
-          date: targetDate,
-          sha: marketData.sha,
-          she: marketData.she,
-          csi300: marketData.csi300,
-          sp500: marketData.sp500,
-          nasdaq: marketData.nasdaq,
-          ftse100: marketData.ftse100,
-          hangseng: marketData.hangseng,
-        },
-        { onConflict: 'date' }
-      )
-      .select()
-      .single();
+    // Only include fields that have actual values (not undefined)
+    const dataToUpsert: Record<string, any> = { date: targetDate };
+    Object.entries(marketData).forEach(([key, value]) => {
+      if (key !== 'date' && value !== undefined) {
+        dataToUpsert[key] = value;
+      }
+    });
 
-    if (error) {
-      console.error('Error upserting market data:', error);
-      throw error;
+    let resultData = null;
+    if (Object.keys(dataToUpsert).length > 1) {
+      const { data, error } = await supabaseClient
+        .from('market_indices')
+        .upsert(dataToUpsert, { onConflict: 'date' })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error upserting market data:', error);
+        throw error;
+      }
+
+      resultData = data;
+      console.log(`Market data updated successfully with ${Object.keys(dataToUpsert).length - 1} values:`, data);
+    } else {
+      console.warn('No market data available from APIs');
     }
 
-    console.log('Market data updated successfully:', data);
-
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ success: true, data: resultData, marketData }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
