@@ -174,10 +174,10 @@ async function fetchMarketDataFromAPIs(date: string): Promise<Omit<MarketData, '
 async function fetchYahooFinanceData(symbol: string, date: string): Promise<number | undefined> {
   try {
     const targetDate = new Date(date);
-    const startTimestamp = Math.floor(targetDate.getTime() / 1000);
-    const endTimestamp = startTimestamp + 86400; // +1 day
+    const period1 = Math.floor(targetDate.getTime() / 1000);
+    const period2 = period1 + 86400; // +1 day
 
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${startTimestamp}&period2=${endTimestamp}&interval=1d`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=1d`;
     
     const response = await fetch(url);
     
@@ -187,14 +187,29 @@ async function fetchYahooFinanceData(symbol: string, date: string): Promise<numb
     }
 
     const data = await response.json();
+    const result = data?.chart?.result?.[0];
     
-    if (!data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.[0]) {
-      console.warn(`No data available for ${symbol} on ${date}`);
+    if (!result) {
+      console.warn(`No result data for ${symbol} on ${date}`);
       return undefined;
     }
-
-    const closePrice = data.chart.result[0].indicators.quote[0].close[0];
-    return closePrice;
+    
+    // Try to get price from meta first (more reliable)
+    const metaPrice = result.meta?.regularMarketPrice;
+    if (metaPrice != null && !isNaN(metaPrice)) {
+      console.log(`${symbol} on ${date}: ${metaPrice} (from meta)`);
+      return metaPrice;
+    }
+    
+    // Fallback to historical close price
+    const closePrice = result.indicators?.quote?.[0]?.close?.[0];
+    if (closePrice != null && !isNaN(closePrice)) {
+      console.log(`${symbol} on ${date}: ${closePrice} (from quote)`);
+      return closePrice;
+    }
+    
+    console.warn(`No valid price data for ${symbol} on ${date}`);
+    return undefined;
 
   } catch (error) {
     console.error(`Error fetching ${symbol}:`, error);

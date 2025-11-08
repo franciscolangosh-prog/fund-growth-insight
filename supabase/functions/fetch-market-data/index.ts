@@ -93,10 +93,10 @@ async function fetchMarketDataFromAPIs(date: string): Promise<MarketData> {
     sha: { yahoo: '000001.SS', alpha: '000001.SS' },
     she: { yahoo: '399001.SZ', alpha: '399001.SZ' },
     csi300: { yahoo: '000300.SS', alpha: '000300.SS' },
-    sp500: { yahoo: '%5EGSPC', alpha: 'SPX' },
-    nasdaq: { yahoo: '%5EIXIC', alpha: 'IXIC' },
-    ftse100: { yahoo: '%5EFTSE', alpha: 'FTSE' },
-    hangseng: { yahoo: '%5EHSI', alpha: 'HSI' },
+    sp500: { yahoo: '^GSPC', alpha: 'SPX' },
+    nasdaq: { yahoo: '^IXIC', alpha: 'IXIC' },
+    ftse100: { yahoo: '^FTSE', alpha: 'FTSE' },
+    hangseng: { yahoo: '^HSI', alpha: 'HSI' },
   };
 
   const results = await Promise.all(
@@ -128,20 +128,26 @@ async function fetchMarketDataFromAPIs(date: string): Promise<MarketData> {
  */
 async function fetchYahooFinanceData(symbol: string, date: string): Promise<number | undefined> {
   try {
-    // Convert date to timestamps
     const targetDate = new Date(date);
-    const period1 = Math.floor(targetDate.getTime() / 1000);
-    const period2 = period1 + 86400; // Add 1 day
-
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=1d`;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    targetDate.setHours(0, 0, 0, 0);
     
-    console.log(`Fetching ${symbol} from Yahoo Finance...`);
+    let url: string;
     
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
-    });
+    // For current/recent data, use the range parameter (works better)
+    if (targetDate.getTime() === today.getTime()) {
+      url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?region=US&lang=en-US&includePrePost=false&interval=1d&useYfid=true&range=1d`;
+      console.log(`Fetching latest data for ${symbol}...`);
+    } else {
+      // For historical data, use period parameters
+      const period1 = Math.floor(targetDate.getTime() / 1000);
+      const period2 = period1 + 86400; // Add 1 day
+      url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=1d`;
+      console.log(`Fetching historical data for ${symbol} on ${date}...`);
+    }
+    
+    const response = await fetch(url);
 
     if (!response.ok) {
       console.error(`Yahoo Finance API error for ${symbol}: ${response.status}`);
@@ -149,13 +155,24 @@ async function fetchYahooFinanceData(symbol: string, date: string): Promise<numb
     }
 
     const data = await response.json();
-    
-    // Extract close price from Yahoo Finance response
     const result = data?.chart?.result?.[0];
-    const closePrice = result?.indicators?.quote?.[0]?.close?.[0];
     
-    if (closePrice && !isNaN(closePrice)) {
-      console.log(`${symbol}: ${closePrice}`);
+    if (!result) {
+      console.warn(`No result data for ${symbol}`);
+      return undefined;
+    }
+    
+    // Try to get price from meta first (more reliable for current data)
+    const metaPrice = result.meta?.regularMarketPrice;
+    if (metaPrice != null && !isNaN(metaPrice)) {
+      console.log(`${symbol}: ${metaPrice} (from meta)`);
+      return metaPrice;
+    }
+    
+    // Fallback to historical close price
+    const closePrice = result.indicators?.quote?.[0]?.close?.[0];
+    if (closePrice != null && !isNaN(closePrice)) {
+      console.log(`${symbol}: ${closePrice} (from quote)`);
       return closePrice;
     }
     
