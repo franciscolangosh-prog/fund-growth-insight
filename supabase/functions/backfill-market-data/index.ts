@@ -66,6 +66,34 @@ Deno.serve(async (req) => {
             }
           });
 
+          // If no market data from APIs, use previous trading day's data
+          if (Object.keys(dataToUpsert).length === 1) {
+            console.log(`No API data for ${date}, fetching previous trading day's data...`);
+            
+            // Get the most recent previous date with data
+            const { data: previousData, error: queryError } = await supabaseClient
+              .from('market_indices')
+              .select('sha, she, csi300, sp500, nasdaq, ftse100, hangseng')
+              .lt('date', date)
+              .order('date', { ascending: false })
+              .limit(1)
+              .single();
+            
+            if (queryError) {
+              console.error(`Error fetching previous data for ${date}:`, queryError);
+            } else if (previousData) {
+              // Copy previous day's data
+              Object.entries(previousData).forEach(([key, value]) => {
+                if (value !== null && value !== undefined) {
+                  dataToUpsert[key] = value;
+                }
+              });
+              console.log(`Using previous trading day's data for ${date}`);
+            } else {
+              console.warn(`⚠ No previous data available for ${date}`);
+            }
+          }
+
           // Only upsert if we have at least one market value
           if (Object.keys(dataToUpsert).length > 1) {
             const { error } = await supabaseClient
