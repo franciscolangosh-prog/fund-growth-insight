@@ -194,17 +194,11 @@ async function fetchYahooFinanceData(symbol: string, date: string): Promise<numb
       return undefined;
     }
     
-    // Try to get price from meta first (more reliable)
-    const metaPrice = result.meta?.regularMarketPrice;
-    if (metaPrice != null && !isNaN(metaPrice)) {
-      console.log(`${symbol} on ${date}: ${metaPrice} (from meta)`);
-      return metaPrice;
-    }
-    
-    // Fallback to historical close price
+    // For historical data, ONLY use the close price from the time series
+    // meta.regularMarketPrice is the CURRENT price, not historical!
     const closePrice = result.indicators?.quote?.[0]?.close?.[0];
     if (closePrice != null && !isNaN(closePrice)) {
-      console.log(`${symbol} on ${date}: ${closePrice} (from quote)`);
+      console.log(`${symbol} on ${date}: ${closePrice} (historical close)`);
       return closePrice;
     }
     
