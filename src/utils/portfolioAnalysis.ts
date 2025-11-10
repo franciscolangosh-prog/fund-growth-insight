@@ -37,59 +37,100 @@ export interface CorrelationData {
   hangseng: number;
 }
 
-export function parseCSV(csvText: string): PortfolioData[] {
+export interface SimplifiedPortfolioData {
+  date: string;
+  shares: number;
+  shareValue: number;
+  gainLoss: number;
+  principle: number;
+}
+
+export function parseCSV(csvText: string): SimplifiedPortfolioData[] | PortfolioData[] {
   const lines = csvText.trim().split('\n');
   // Skip first 2 rows (Sheet name and header)
-  const parsedData: PortfolioData[] = [];
-  let lastValues = {
-    sp500: 0,
-    nasdaq: 0,
-    ftse100: 0,
-    hangseng: 0,
-  };
+  const header = lines[1].toLowerCase();
+  
+  // Detect if it's the simplified format (no SHA, SHE, CSI300 columns)
+  const isSimplifiedFormat = !header.includes('sha') && !header.includes('she') && !header.includes('csi300');
+  
+  if (isSimplifiedFormat) {
+    // Parse simplified format (only personal portfolio data)
+    const parsedData: SimplifiedPortfolioData[] = [];
 
-  lines.slice(2).forEach(line => {
-    const values = line.split(',').map(v => v.trim());
-    
-    // Parse DD/MM/YYYY format to YYYY-MM-DD
-    const dateParts = values[0].split('/');
-    const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-    
-    // Parse global indices, use previous value if missing
-    const sp500 = parseFloat(values[10]) || lastValues.sp500;
-    const nasdaq = parseFloat(values[11]) || lastValues.nasdaq;
-    const ftse100 = parseFloat(values[12]) || lastValues.ftse100;
-    const hangseng = parseFloat(values[13]) || lastValues.hangseng;
-    
-    // Update last values for next iteration
-    if (sp500 > 0) lastValues.sp500 = sp500;
-    if (nasdaq > 0) lastValues.nasdaq = nasdaq;
-    if (ftse100 > 0) lastValues.ftse100 = ftse100;
-    if (hangseng > 0) lastValues.hangseng = hangseng;
-    
-    const row = {
-      date: formattedDate,
-      sha: parseFloat(values[1]) || 0,
-      she: parseFloat(values[2]) || 0,
-      csi300: parseFloat(values[3]) || 0,
-      shares: parseFloat(values[4]) || 0,
-      shareValue: parseFloat(values[5]) || 0,
-      gainLoss: parseFloat(values[6].replace(/[()]/g, '').replace(',', '')) * (values[6].includes('(') ? -1 : 1) || 0,
-      dailyGain: parseFloat(values[7].replace(/[()]/g, '').replace(',', '')) * (values[7].includes('(') ? -1 : 1) || 0,
-      marketValue: parseFloat(values[8]) || 0,
-      principle: parseFloat(values[9]) || 0,
-      sp500,
-      nasdaq,
-      ftse100,
-      hangseng,
+    lines.slice(2).forEach(line => {
+      const values = line.split(',').map(v => v.trim());
+      
+      // Parse DD/MM/YYYY format to YYYY-MM-DD
+      const dateParts = values[0].split('/');
+      const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+      
+      const row = {
+        date: formattedDate,
+        shares: parseFloat(values[1]) || 0,
+        shareValue: parseFloat(values[2]) || 0,
+        gainLoss: parseFloat(values[3].replace(/[()]/g, '').replace(',', '')) * (values[3].includes('(') ? -1 : 1) || 0,
+        principle: parseFloat(values[4]) || 0,
+      };
+      
+      if (row.shareValue > 0) {
+        parsedData.push(row);
+      }
+    });
+
+    return parsedData;
+  } else {
+    // Parse old format (includes market indices)
+    const parsedData: PortfolioData[] = [];
+    let lastValues = {
+      sp500: 0,
+      nasdaq: 0,
+      ftse100: 0,
+      hangseng: 0,
     };
-    
-    if (row.shareValue > 0) {
-      parsedData.push(row);
-    }
-  });
 
-  return parsedData;
+    lines.slice(2).forEach(line => {
+      const values = line.split(',').map(v => v.trim());
+      
+      // Parse DD/MM/YYYY format to YYYY-MM-DD
+      const dateParts = values[0].split('/');
+      const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+      
+      // Parse global indices, use previous value if missing
+      const sp500 = parseFloat(values[10]) || lastValues.sp500;
+      const nasdaq = parseFloat(values[11]) || lastValues.nasdaq;
+      const ftse100 = parseFloat(values[12]) || lastValues.ftse100;
+      const hangseng = parseFloat(values[13]) || lastValues.hangseng;
+      
+      // Update last values for next iteration
+      if (sp500 > 0) lastValues.sp500 = sp500;
+      if (nasdaq > 0) lastValues.nasdaq = nasdaq;
+      if (ftse100 > 0) lastValues.ftse100 = ftse100;
+      if (hangseng > 0) lastValues.hangseng = hangseng;
+      
+      const row = {
+        date: formattedDate,
+        sha: parseFloat(values[1]) || 0,
+        she: parseFloat(values[2]) || 0,
+        csi300: parseFloat(values[3]) || 0,
+        shares: parseFloat(values[4]) || 0,
+        shareValue: parseFloat(values[5]) || 0,
+        gainLoss: parseFloat(values[6].replace(/[()]/g, '').replace(',', '')) * (values[6].includes('(') ? -1 : 1) || 0,
+        dailyGain: parseFloat(values[7].replace(/[()]/g, '').replace(',', '')) * (values[7].includes('(') ? -1 : 1) || 0,
+        marketValue: parseFloat(values[8]) || 0,
+        principle: parseFloat(values[9]) || 0,
+        sp500,
+        nasdaq,
+        ftse100,
+        hangseng,
+      };
+      
+      if (row.shareValue > 0) {
+        parsedData.push(row);
+      }
+    });
+
+    return parsedData;
+  }
 }
 
 export function parsePortfolioData(data: any[]): PortfolioData[] {

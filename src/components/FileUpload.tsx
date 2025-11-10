@@ -74,9 +74,9 @@ export function FileUpload({ onFileUploaded }: FileUploadProps) {
 
   const downloadTemplate = () => {
     const template = `Sheet1
-date,SHA,SHE,CSI300,shares,share_value,gain_loss,daily_gain,market_value,principle
-01/01/2024,3000.00,2000.00,3500.00,1000.00,1.0000,0.00,0.00,1000.00,1000.00
-02/01/2024,3010.00,2005.00,3515.00,1000.00,1.0050,5.00,5.00,1005.00,1000.00`;
+date,shares,share_value,gain_loss,principle
+01/01/2024,1000.00,1.0000,0.00,1000.00
+02/01/2024,1000.00,1.0050,5.00,1000.00`;
     
     const blob = new Blob([template], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -158,18 +158,13 @@ date,SHA,SHE,CSI300,shares,share_value,gain_loss,daily_gain,market_value,princip
                 <p><strong>Required columns (in order):</strong></p>
                 <ul className="list-disc list-inside ml-2 space-y-1">
                   <li><code className="bg-background px-1 rounded">date</code> - Date in DD/MM/YYYY format</li>
-                  <li><code className="bg-background px-1 rounded">SHA</code> - Shanghai Composite Index value</li>
-                  <li><code className="bg-background px-1 rounded">SHE</code> - Shenzhen Component Index value</li>
-                  <li><code className="bg-background px-1 rounded">CSI300</code> - CSI 300 Index value</li>
                   <li><code className="bg-background px-1 rounded">shares</code> - Number of shares</li>
                   <li><code className="bg-background px-1 rounded">share_value</code> - Share value</li>
                   <li><code className="bg-background px-1 rounded">gain_loss</code> - Total gain/loss</li>
-                  <li><code className="bg-background px-1 rounded">daily_gain</code> - Daily gain</li>
-                  <li><code className="bg-background px-1 rounded">market_value</code> - Market value</li>
                   <li><code className="bg-background px-1 rounded">principle</code> - Principle amount</li>
                 </ul>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  First row should contain sheet name, second row should contain column headers
+                  First row should contain sheet name, second row should contain column headers. Market indices will be automatically fetched from the database.
                 </p>
               </div>
             </div>

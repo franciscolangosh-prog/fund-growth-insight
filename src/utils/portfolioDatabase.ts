@@ -1,12 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { PortfolioData } from "./portfolioAnalysis";
+import { PortfolioData, SimplifiedPortfolioData } from "./portfolioAnalysis";
 
 type PortfolioDataRow = Tables<'portfolio_data'>;
 
 export const savePortfolioToDatabase = async (
   name: string,
-  data: PortfolioData[]
+  data: SimplifiedPortfolioData[] | PortfolioData[]
 ): Promise<string | null> => {
   try {
     // Create portfolio entry
@@ -18,26 +18,72 @@ export const savePortfolioToDatabase = async (
 
     if (portfolioError) throw portfolioError;
 
-    // Insert portfolio data
-    const portfolioDataEntries = data.map((entry) => ({
-      portfolio_id: portfolio.id,
-      date: entry.date,
-      principle: entry.principle,
-      share_value: entry.shareValue,
-      sha: entry.sha,
-      she: entry.she,
-      csi300: entry.csi300,
-      sp500: entry.sp500,
-      nasdaq: entry.nasdaq,
-      ftse100: entry.ftse100,
-      hangseng: entry.hangseng,
-    }));
+    // Check if data is simplified format (doesn't have market indices)
+    const isSimplified = data.length > 0 && !('sha' in data[0]);
 
-    const { error: dataError } = await supabase
-      .from('portfolio_data')
-      .insert(portfolioDataEntries);
+    if (isSimplified) {
+      // Fetch market indices for all dates in the portfolio data
+      const dates = data.map(entry => entry.date);
+      const { data: marketIndices, error: marketError } = await supabase
+        .from('market_indices')
+        .select('*')
+        .in('date', dates);
 
-    if (dataError) throw dataError;
+      if (marketError) {
+        console.error("Error fetching market indices:", marketError);
+      }
+
+      // Create a map of market indices by date
+      const marketIndicesMap = new Map(
+        marketIndices?.map(mi => [mi.date, mi]) || []
+      );
+
+      // Insert portfolio data with market indices
+      const portfolioDataEntries = (data as SimplifiedPortfolioData[]).map((entry) => {
+        const marketData = marketIndicesMap.get(entry.date);
+        
+        return {
+          portfolio_id: portfolio.id,
+          date: entry.date,
+          principle: entry.principle,
+          share_value: entry.shareValue,
+          sha: marketData?.sha || 0,
+          she: marketData?.she || 0,
+          csi300: marketData?.csi300 || 0,
+          sp500: marketData?.sp500 || 0,
+          nasdaq: marketData?.nasdaq || 0,
+          ftse100: marketData?.ftse100 || 0,
+          hangseng: marketData?.hangseng || 0,
+        };
+      });
+
+      const { error: dataError } = await supabase
+        .from('portfolio_data')
+        .insert(portfolioDataEntries);
+
+      if (dataError) throw dataError;
+    } else {
+      // Insert portfolio data with market indices already included
+      const portfolioDataEntries = (data as PortfolioData[]).map((entry) => ({
+        portfolio_id: portfolio.id,
+        date: entry.date,
+        principle: entry.principle,
+        share_value: entry.shareValue,
+        sha: entry.sha,
+        she: entry.she,
+        csi300: entry.csi300,
+        sp500: entry.sp500,
+        nasdaq: entry.nasdaq,
+        ftse100: entry.ftse100,
+        hangseng: entry.hangseng,
+      }));
+
+      const { error: dataError } = await supabase
+        .from('portfolio_data')
+        .insert(portfolioDataEntries);
+
+      if (dataError) throw dataError;
+    }
 
     return portfolio.id;
   } catch (error) {

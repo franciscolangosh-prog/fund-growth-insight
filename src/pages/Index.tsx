@@ -59,8 +59,10 @@ const Index = () => {
           if (portfolioId) {
             setSelectedPortfolioId(portfolioId);
             await loadPortfolios();
+            // Load the full portfolio data from database
+            const fullPortfolioData = await loadPortfolioFromDatabase(portfolioId);
+            setData(fullPortfolioData);
           }
-          setData(parsedData);
         } catch (error) {
           console.error("Error loading default portfolio data:", error);
         }
