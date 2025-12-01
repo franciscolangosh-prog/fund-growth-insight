@@ -10,6 +10,7 @@ import { FileUpload } from "@/components/FileUpload";
 import { PortfolioSelector } from "@/components/PortfolioSelector";
 import { RecordsEditorDialog } from "@/components/RecordsEditorDialog";
 import { DataMigrationPanel } from "@/components/DataMigrationPanel";
+import { CronJobManager } from "@/components/CronJobManager";
 import {
   parseCSV,
   calculateCorrelations,
@@ -149,6 +150,8 @@ const Index = () => {
         </div>
 
         <DataMigrationPanel />
+
+        <CronJobManager />
 
         <FileUpload onFileUploaded={handleFileUploaded} />
 
