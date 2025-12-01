@@ -18,72 +18,19 @@ export const savePortfolioToDatabase = async (
 
     if (portfolioError) throw portfolioError;
 
-    // Check if data is simplified format (doesn't have market indices)
-    const isSimplified = data.length > 0 && !('sha' in data[0]);
+    // Insert portfolio data (personal data only, no market indices)
+    const portfolioDataEntries = data.map((entry) => ({
+      portfolio_id: portfolio.id,
+      date: entry.date,
+      principle: entry.principle,
+      share_value: 'shareValue' in entry ? entry.shareValue : entry.shareValue,
+    }));
 
-    if (isSimplified) {
-      // Fetch market indices for all dates in the portfolio data
-      const dates = data.map(entry => entry.date);
-      const { data: marketIndices, error: marketError } = await supabase
-        .from('market_indices')
-        .select('*')
-        .in('date', dates);
+    const { error: dataError } = await supabase
+      .from('portfolio_data')
+      .insert(portfolioDataEntries);
 
-      if (marketError) {
-        console.error("Error fetching market indices:", marketError);
-      }
-
-      // Create a map of market indices by date
-      const marketIndicesMap = new Map(
-        marketIndices?.map(mi => [mi.date, mi]) || []
-      );
-
-      // Insert portfolio data with market indices
-      const portfolioDataEntries = (data as SimplifiedPortfolioData[]).map((entry) => {
-        const marketData = marketIndicesMap.get(entry.date);
-        
-        return {
-          portfolio_id: portfolio.id,
-          date: entry.date,
-          principle: entry.principle,
-          share_value: entry.shareValue,
-          sha: marketData?.sha || 0,
-          she: marketData?.she || 0,
-          csi300: marketData?.csi300 || 0,
-          sp500: marketData?.sp500 || 0,
-          nasdaq: marketData?.nasdaq || 0,
-          ftse100: marketData?.ftse100 || 0,
-          hangseng: marketData?.hangseng || 0,
-        };
-      });
-
-      const { error: dataError } = await supabase
-        .from('portfolio_data')
-        .insert(portfolioDataEntries);
-
-      if (dataError) throw dataError;
-    } else {
-      // Insert portfolio data with market indices already included
-      const portfolioDataEntries = (data as PortfolioData[]).map((entry) => ({
-        portfolio_id: portfolio.id,
-        date: entry.date,
-        principle: entry.principle,
-        share_value: entry.shareValue,
-        sha: entry.sha,
-        she: entry.she,
-        csi300: entry.csi300,
-        sp500: entry.sp500,
-        nasdaq: entry.nasdaq,
-        ftse100: entry.ftse100,
-        hangseng: entry.hangseng,
-      }));
-
-      const { error: dataError } = await supabase
-        .from('portfolio_data')
-        .insert(portfolioDataEntries);
-
-      if (dataError) throw dataError;
-    }
+    if (dataError) throw dataError;
 
     return portfolio.id;
   } catch (error) {
@@ -122,7 +69,23 @@ export const loadPortfolioFromDatabase = async (
 
     if (allEntries.length === 0) return [];
 
-    // Calculate derived fields
+    // Fetch market indices for all dates
+    const dates = allEntries.map(entry => entry.date);
+    const { data: marketIndices, error: marketError } = await supabase
+      .from('market_indices')
+      .select('*')
+      .in('date', dates);
+
+    if (marketError) {
+      console.error("Error fetching market indices:", marketError);
+    }
+
+    // Create a map of market indices by date
+    const marketIndicesMap = new Map(
+      marketIndices?.map(mi => [mi.date, mi]) || []
+    );
+
+    // Calculate derived fields and merge with market data
     return allEntries.map((entry, index) => {
       const principle = Number(entry.principle) || 0;
       const shareValue = Number(entry.share_value) || 0;
@@ -140,17 +103,20 @@ export const loadPortfolioFromDatabase = async (
         dailyGain = marketValue - prevMarketValue;
       }
 
+      // Get market data for this date
+      const marketData = marketIndicesMap.get(entry.date);
+
       return {
         date: entry.date,
         principle,
         shareValue,
-        sha: Number(entry.sha),
-        she: Number(entry.she),
-        csi300: Number(entry.csi300),
-        sp500: Number(entry.sp500) || 0,
-        nasdaq: Number(entry.nasdaq) || 0,
-        ftse100: Number(entry.ftse100) || 0,
-        hangseng: Number(entry.hangseng) || 0,
+        sha: Number(marketData?.sha) || 0,
+        she: Number(marketData?.she) || 0,
+        csi300: Number(marketData?.csi300) || 0,
+        sp500: Number(marketData?.sp500) || 0,
+        nasdaq: Number(marketData?.nasdaq) || 0,
+        ftse100: Number(marketData?.ftse100) || 0,
+        hangseng: Number(marketData?.hangseng) || 0,
         shares,
         gainLoss,
         dailyGain,
@@ -185,13 +151,6 @@ export const addPortfolioRecord = async (
     date: string;
     principle: number;
     shareValue: number;
-    sha: number;
-    she: number;
-    csi300: number;
-    sp500?: number;
-    nasdaq?: number;
-    ftse100?: number;
-    hangseng?: number;
   }
 ) => {
   try {
@@ -202,13 +161,6 @@ export const addPortfolioRecord = async (
         date: record.date,
         principle: record.principle,
         share_value: record.shareValue,
-        sha: record.sha,
-        she: record.she,
-        csi300: record.csi300,
-        sp500: record.sp500 || 0,
-        nasdaq: record.nasdaq || 0,
-        ftse100: record.ftse100 || 0,
-        hangseng: record.hangseng || 0,
       });
 
     if (error) throw error;
@@ -224,13 +176,6 @@ export const updatePortfolioRecord = async (
   record: {
     principle: number;
     shareValue: number;
-    sha: number;
-    she: number;
-    csi300: number;
-    sp500?: number;
-    nasdaq?: number;
-    ftse100?: number;
-    hangseng?: number;
   }
 ) => {
   try {
@@ -239,13 +184,6 @@ export const updatePortfolioRecord = async (
       .update({
         principle: record.principle,
         share_value: record.shareValue,
-        sha: record.sha,
-        she: record.she,
-        csi300: record.csi300,
-        sp500: record.sp500 || 0,
-        nasdaq: record.nasdaq || 0,
-        ftse100: record.ftse100 || 0,
-        hangseng: record.hangseng || 0,
       })
       .eq('id', recordId);
 
