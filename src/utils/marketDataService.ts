@@ -15,48 +15,30 @@ export interface MarketIndices {
  * Checks market_indices table first, falls back to portfolio_data for backward compatibility
  */
 export async function getMarketIndicesForDate(date: string): Promise<MarketIndices | null> {
-  // First, try to get from market_indices table
   const { data: marketData, error: marketError } = await supabase
     .from('market_indices')
     .select('sha, she, csi300, sp500, nasdaq, ftse100, hangseng')
     .eq('date', date)
     .maybeSingle();
 
-  if (!marketError && marketData) {
-    console.log('Market data found in market_indices table');
-    return {
-      sha: Number(marketData.sha) || 0,
-      she: Number(marketData.she) || 0,
-      csi300: Number(marketData.csi300) || 0,
-      sp500: marketData.sp500 ? Number(marketData.sp500) : undefined,
-      nasdaq: marketData.nasdaq ? Number(marketData.nasdaq) : undefined,
-      ftse100: marketData.ftse100 ? Number(marketData.ftse100) : undefined,
-      hangseng: marketData.hangseng ? Number(marketData.hangseng) : undefined,
-    };
-  }
-
-  // Fallback: try to get from portfolio_data for backward compatibility
-  const { data: portfolioData, error: portfolioError } = await supabase
-    .from('portfolio_data')
-    .select('sha, she, csi300, sp500, nasdaq, ftse100, hangseng')
-    .eq('date', date)
-    .limit(1)
-    .maybeSingle();
-
-  if (portfolioError || !portfolioData) {
-    console.error('Market data not found for date:', date);
+  if (marketError) {
+    console.error('Error fetching market data:', marketError);
     return null;
   }
 
-  console.log('Market data found in portfolio_data table (legacy)');
+  if (!marketData) {
+    console.log('Market data not found for date:', date);
+    return null;
+  }
+
   return {
-    sha: Number(portfolioData.sha) || 0,
-    she: Number(portfolioData.she) || 0,
-    csi300: Number(portfolioData.csi300) || 0,
-    sp500: portfolioData.sp500 ? Number(portfolioData.sp500) : undefined,
-    nasdaq: portfolioData.nasdaq ? Number(portfolioData.nasdaq) : undefined,
-    ftse100: portfolioData.ftse100 ? Number(portfolioData.ftse100) : undefined,
-    hangseng: portfolioData.hangseng ? Number(portfolioData.hangseng) : undefined,
+    sha: Number(marketData.sha) || 0,
+    she: Number(marketData.she) || 0,
+    csi300: Number(marketData.csi300) || 0,
+    sp500: marketData.sp500 ? Number(marketData.sp500) : undefined,
+    nasdaq: marketData.nasdaq ? Number(marketData.nasdaq) : undefined,
+    ftse100: marketData.ftse100 ? Number(marketData.ftse100) : undefined,
+    hangseng: marketData.hangseng ? Number(marketData.hangseng) : undefined,
   };
 }
 

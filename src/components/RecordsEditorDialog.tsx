@@ -24,13 +24,6 @@ interface RecordData {
   date: Date;
   principle: number;
   shareValue: number;
-  sha: number;
-  she: number;
-  csi300: number;
-  sp500?: number;
-  nasdaq?: number;
-  ftse100?: number;
-  hangseng?: number;
 }
 
 interface RecordsEditorDialogProps {
@@ -60,13 +53,6 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
           date: new Date(d.date),
           principle: Number(d.principle),
           shareValue: Number(d.share_value),
-          sha: Number(d.sha),
-          she: Number(d.she),
-          csi300: Number(d.csi300),
-          sp500: d.sp500 ? Number(d.sp500) : undefined,
-          nasdaq: d.nasdaq ? Number(d.nasdaq) : undefined,
-          ftse100: d.ftse100 ? Number(d.ftse100) : undefined,
-          hangseng: d.hangseng ? Number(d.hangseng) : undefined,
         })));
       }
     };
@@ -82,13 +68,6 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
       const success = await updatePortfolioRecord(editingRecord.id, {
         principle: values.principle,
         shareValue: values.shareValue,
-        sha: values.sha,
-        she: values.she,
-        csi300: values.csi300,
-        sp500: values.sp500,
-        nasdaq: values.nasdaq,
-        ftse100: values.ftse100,
-        hangseng: values.hangseng,
       });
       if (success) {
         toast.success(`Record for ${dateStr} updated successfully`);
@@ -102,13 +81,6 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
             date: new Date(d.date),
             principle: Number(d.principle),
             shareValue: Number(d.share_value),
-            sha: Number(d.sha),
-            she: Number(d.she),
-            csi300: Number(d.csi300),
-            sp500: d.sp500 ? Number(d.sp500) : undefined,
-            nasdaq: d.nasdaq ? Number(d.nasdaq) : undefined,
-            ftse100: d.ftse100 ? Number(d.ftse100) : undefined,
-            hangseng: d.hangseng ? Number(d.hangseng) : undefined,
           })));
         }
         onRecordSaved();
@@ -120,13 +92,6 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
         date: dateStr,
         principle: values.principle,
         shareValue: values.shareValue,
-        sha: values.sha,
-        she: values.she,
-        csi300: values.csi300,
-        sp500: values.sp500,
-        nasdaq: values.nasdaq,
-        ftse100: values.ftse100,
-        hangseng: values.hangseng,
       });
       if (success) {
         toast.success(`Record for ${dateStr} added successfully`);
@@ -140,13 +105,6 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
             date: new Date(d.date),
             principle: Number(d.principle),
             shareValue: Number(d.share_value),
-            sha: Number(d.sha),
-            she: Number(d.she),
-            csi300: Number(d.csi300),
-            sp500: d.sp500 ? Number(d.sp500) : undefined,
-            nasdaq: d.nasdaq ? Number(d.nasdaq) : undefined,
-            ftse100: d.ftse100 ? Number(d.ftse100) : undefined,
-            hangseng: d.hangseng ? Number(d.hangseng) : undefined,
           })));
         }
         onRecordSaved();
@@ -212,13 +170,6 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
                 <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">Date</th>
                 <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">Principle</th>
                 <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">Share Value</th>
-                <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">SHA</th>
-                <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">SHE</th>
-                <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">CSI300</th>
-                <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">S&P500</th>
-                <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">Nasdaq</th>
-                <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">FTSE100</th>
-                <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">HangSeng</th>
                 <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">Actions</th>
               </tr>
             </thead>
@@ -228,13 +179,6 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
                   <td className="p-3 align-middle text-sm">{format(record.date, "MM/dd/yyyy")}</td>
                   <td className="p-3 align-middle text-sm">{record.principle.toLocaleString()}</td>
                   <td className="p-3 align-middle text-sm">{record.shareValue.toFixed(4)}</td>
-                  <td className="p-3 align-middle text-sm">{record.sha.toFixed(2)}</td>
-                  <td className="p-3 align-middle text-sm">{record.she.toFixed(2)}</td>
-                  <td className="p-3 align-middle text-sm">{record.csi300.toFixed(2)}</td>
-                  <td className="p-3 align-middle text-sm">{record.sp500?.toFixed(2) ?? '-'}</td>
-                  <td className="p-3 align-middle text-sm">{record.nasdaq?.toFixed(2) ?? '-'}</td>
-                  <td className="p-3 align-middle text-sm">{record.ftse100?.toFixed(2) ?? '-'}</td>
-                  <td className="p-3 align-middle text-sm">{record.hangseng?.toFixed(2) ?? '-'}</td>
                   <td className="p-3 align-middle">
                     <div className="flex gap-2">
                       <Button

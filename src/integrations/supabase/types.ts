@@ -59,48 +59,27 @@ export type Database = {
       portfolio_data: {
         Row: {
           created_at: string
-          csi300: number
           date: string
-          ftse100: number | null
-          hangseng: number | null
           id: string
-          nasdaq: number | null
           portfolio_id: string
           principle: number
-          sha: number
           share_value: number
-          she: number
-          sp500: number | null
         }
         Insert: {
           created_at?: string
-          csi300: number
           date: string
-          ftse100?: number | null
-          hangseng?: number | null
           id?: string
-          nasdaq?: number | null
           portfolio_id: string
           principle: number
-          sha: number
           share_value: number
-          she: number
-          sp500?: number | null
         }
         Update: {
           created_at?: string
-          csi300?: number
           date?: string
-          ftse100?: number | null
-          hangseng?: number | null
           id?: string
-          nasdaq?: number | null
           portfolio_id?: string
           principle?: number
-          sha?: number
           share_value?: number
-          she?: number
-          sp500?: number | null
         }
         Relationships: [
           {
