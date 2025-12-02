@@ -31,7 +31,7 @@ const recordFormSchema = z.object({
     required_error: "Date is required",
   }),
   principle: z.coerce.number().positive("Principle must be positive"),
-  shareValue: z.coerce.number().positive("Share value must be positive"),
+  marketValue: z.coerce.number().positive("Market value must be positive"),
 });
 
 type RecordFormValues = z.infer<typeof recordFormSchema>;
@@ -56,7 +56,7 @@ export function RecordFormDialog({
     defaultValues: {
       date: new Date(),
       principle: 0,
-      shareValue: 0,
+      marketValue: 0,
     },
   });
 
@@ -67,7 +67,7 @@ export function RecordFormDialog({
       form.reset({
         date: new Date(),
         principle: 0,
-        shareValue: 0,
+        marketValue: 0,
       });
     }
   }, [open, initialValues, mode, form]);
@@ -83,7 +83,7 @@ export function RecordFormDialog({
         <DialogHeader>
           <DialogTitle>{mode === "add" ? "Add New Record" : "Edit Record"}</DialogTitle>
           <DialogDescription>
-            Enter your portfolio data. Market indices will be automatically populated from our centralized database.
+            Enter your total invested amount and current portfolio value. The system will automatically calculate share values and fetch market data.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -141,12 +141,12 @@ export function RecordFormDialog({
 
               <FormField
                 control={form.control}
-                name="shareValue"
+                name="marketValue"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Share Value</FormLabel>
+                    <FormLabel>Market Value</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.0001" {...field} />
+                      <Input type="number" step="0.01" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
