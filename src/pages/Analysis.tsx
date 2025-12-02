@@ -6,6 +6,15 @@ import { AnnualReturnsTable } from "@/components/AnnualReturnsTable";
 import { CorrelationCard } from "@/components/CorrelationCard";
 import { InvestmentAnalysis } from "@/components/InvestmentAnalysis";
 import { InvestmentBehaviorAnalysis } from "@/components/InvestmentBehaviorAnalysis";
+import { QuickInsightsCard } from "@/components/QuickInsightsCard";
+import { RiskMetricsCard } from "@/components/RiskMetricsCard";
+import { DrawdownChart } from "@/components/DrawdownChart";
+import { RollingReturnsChart } from "@/components/RollingReturnsChart";
+import { InvestmentGrowthCalculator } from "@/components/InvestmentGrowthCalculator";
+import { MonthlyReturnsHeatmap } from "@/components/MonthlyReturnsHeatmap";
+import { BestWorstPeriodsCard } from "@/components/BestWorstPeriodsCard";
+import { RiskAdjustedComparison } from "@/components/RiskAdjustedComparison";
+import { VolatilityChart } from "@/components/VolatilityChart";
 import { PortfolioSelector } from "@/components/PortfolioSelector";
 import { Navigation } from "@/components/Navigation";
 import {
@@ -139,6 +148,7 @@ const Analysis = () => {
               value={`${metrics.outperformance > 0 ? '+' : ''}${metrics.outperformance.toFixed(2)}%`}
               icon={PieChart}
               trend={metrics.outperformance}
+              subtitle="vs Avg(SHA, SHE, CSI300)"
             />
           </div>
 
@@ -166,7 +176,27 @@ const Analysis = () => {
             />
           </div>
 
-          <InvestmentBehaviorAnalysis data={data} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <InvestmentBehaviorAnalysis data={data} />
+            <QuickInsightsCard data={data} annualReturns={annualReturns} />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <RiskMetricsCard data={data} />
+            <BestWorstPeriodsCard data={data} />
+          </div>
+
+          <DrawdownChart data={data} />
+
+          <RollingReturnsChart data={data} />
+
+          <VolatilityChart data={data} />
+
+          <RiskAdjustedComparison data={data} />
+
+          <InvestmentGrowthCalculator data={data} />
+
+          <MonthlyReturnsHeatmap data={data} />
 
           <AnnualReturnsTable returns={annualReturns} data={data} />
         </div>
