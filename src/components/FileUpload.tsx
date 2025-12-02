@@ -74,9 +74,10 @@ export function FileUpload({ onFileUploaded }: FileUploadProps) {
 
   const downloadTemplate = () => {
     const template = `Sheet1
-date,shares,share_value,gain_loss,principle
-01/01/2024,1000.00,1.0000,0.00,1000.00
-02/01/2024,1000.00,1.0050,5.00,1000.00`;
+date,principle,market_value
+01/01/2024,10000.00,10000.00
+02/01/2024,10000.00,10500.00
+03/01/2024,12000.00,12600.00`;
     
     const blob = new Blob([template], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -158,13 +159,11 @@ date,shares,share_value,gain_loss,principle
                 <p><strong>Required columns (in order):</strong></p>
                 <ul className="list-disc list-inside ml-2 space-y-1">
                   <li><code className="bg-background px-1 rounded">date</code> - Date in DD/MM/YYYY format</li>
-                  <li><code className="bg-background px-1 rounded">shares</code> - Number of shares</li>
-                  <li><code className="bg-background px-1 rounded">share_value</code> - Share value</li>
-                  <li><code className="bg-background px-1 rounded">gain_loss</code> - Total gain/loss</li>
-                  <li><code className="bg-background px-1 rounded">principle</code> - Principle amount</li>
+                  <li><code className="bg-background px-1 rounded">principle</code> - Total amount invested (cumulative)</li>
+                  <li><code className="bg-background px-1 rounded">market_value</code> - Current total portfolio value</li>
                 </ul>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  First row should contain sheet name, second row should contain column headers. Market indices will be automatically fetched from the database.
+                  First row should contain sheet name, second row should contain column headers. The system will automatically calculate share values and fetch market indices data.
                 </p>
               </div>
             </div>

@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { RecordFormDialog } from "@/components/RecordFormDialog";
-import { getRecordsByDateRange, updatePortfolioRecord, addPortfolioRecord } from "@/utils/portfolioDatabase";
+import { getRecordsByDateRange, updatePortfolioRecord, addPortfolioRecord, loadPortfolioFromDatabase } from "@/utils/portfolioDatabase";
+import { convertToShareValue, UserPortfolioInput } from "@/utils/portfolioAnalysis";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -23,7 +24,7 @@ interface RecordData {
   id?: string;
   date: Date;
   principle: number;
-  shareValue: number;
+  marketValue: number;
 }
 
 interface RecordsEditorDialogProps {
@@ -48,11 +49,18 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
         const from = format(dateRange.from, "yyyy-MM-dd");
         const to = format(dateRange.to, "yyyy-MM-dd");
         const data = await getRecordsByDateRange(portfolioId, from, to);
+        
+        // Load full portfolio history to reconstruct market values
+        const fullData = await loadPortfolioFromDatabase(portfolioId);
+        const marketValueMap = new Map(
+          fullData.map(d => [d.date, d.marketValue])
+        );
+        
         setRecords(data.map(d => ({
           id: d.id,
           date: new Date(d.date),
           principle: Number(d.principle),
-          shareValue: Number(d.share_value),
+          marketValue: marketValueMap.get(d.date) || Number(d.principle),
         })));
       }
     };
@@ -64,10 +72,39 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
   const handleFormSubmit = async (values: Omit<RecordData, "id">) => {
     const dateStr = format(values.date, "yyyy-MM-dd");
     
+    // Load all records up to this date to calculate share value
+    const allRecords = await loadPortfolioFromDatabase(portfolioId);
+    const recordsUpToDate = allRecords.filter(r => r.date <= dateStr);
+    
+    // Create user input array including the new/edited record
+    const userInputs: UserPortfolioInput[] = recordsUpToDate
+      .filter(r => r.date !== dateStr) // Exclude the current record if editing
+      .map(r => ({
+        date: r.date,
+        principle: r.principle,
+        marketValue: r.marketValue,
+      }));
+    
+    // Add the new/edited record
+    userInputs.push({
+      date: dateStr,
+      principle: values.principle,
+      marketValue: values.marketValue,
+    });
+    
+    // Convert to share value format
+    const converted = convertToShareValue(userInputs);
+    const newRecord = converted.find(r => r.date === dateStr);
+    
+    if (!newRecord) {
+      toast.error("Failed to calculate share value");
+      return;
+    }
+    
     if (formMode === "edit" && editingRecord?.id) {
       const success = await updatePortfolioRecord(editingRecord.id, {
-        principle: values.principle,
-        shareValue: values.shareValue,
+        principle: newRecord.principle,
+        shareValue: newRecord.shareValue,
       });
       if (success) {
         toast.success(`Record for ${dateStr} updated successfully`);
@@ -76,11 +113,13 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
           const from = format(dateRange.from, "yyyy-MM-dd");
           const to = format(dateRange.to, "yyyy-MM-dd");
           const data = await getRecordsByDateRange(portfolioId, from, to);
+          const fullData = await loadPortfolioFromDatabase(portfolioId);
+          const marketValueMap = new Map(fullData.map(d => [d.date, d.marketValue]));
           setRecords(data.map(d => ({
             id: d.id,
             date: new Date(d.date),
             principle: Number(d.principle),
-            shareValue: Number(d.share_value),
+            marketValue: marketValueMap.get(d.date) || Number(d.principle),
           })));
         }
         onRecordSaved();
@@ -90,8 +129,8 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
     } else {
       const success = await addPortfolioRecord(portfolioId, {
         date: dateStr,
-        principle: values.principle,
-        shareValue: values.shareValue,
+        principle: newRecord.principle,
+        shareValue: newRecord.shareValue,
       });
       if (success) {
         toast.success(`Record for ${dateStr} added successfully`);
@@ -100,11 +139,13 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
           const from = format(dateRange.from, "yyyy-MM-dd");
           const to = format(dateRange.to, "yyyy-MM-dd");
           const data = await getRecordsByDateRange(portfolioId, from, to);
+          const fullData = await loadPortfolioFromDatabase(portfolioId);
+          const marketValueMap = new Map(fullData.map(d => [d.date, d.marketValue]));
           setRecords(data.map(d => ({
             id: d.id,
             date: new Date(d.date),
             principle: Number(d.principle),
-            shareValue: Number(d.share_value),
+            marketValue: marketValueMap.get(d.date) || Number(d.principle),
           })));
         }
         onRecordSaved();
@@ -169,7 +210,7 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
               <tr className="border-b">
                 <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">Date</th>
                 <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">Principle</th>
-                <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">Share Value</th>
+                <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">Market Value</th>
                 <th className="h-10 px-3 text-left align-middle font-medium text-muted-foreground text-sm">Actions</th>
               </tr>
             </thead>
@@ -178,7 +219,7 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
                 <tr key={record.id} className="border-b transition-colors hover:bg-muted/50">
                   <td className="p-3 align-middle text-sm">{format(record.date, "MM/dd/yyyy")}</td>
                   <td className="p-3 align-middle text-sm">{record.principle.toLocaleString()}</td>
-                  <td className="p-3 align-middle text-sm">{record.shareValue.toFixed(4)}</td>
+                  <td className="p-3 align-middle text-sm">{record.marketValue.toLocaleString()}</td>
                   <td className="p-3 align-middle">
                     <div className="flex gap-2">
                       <Button

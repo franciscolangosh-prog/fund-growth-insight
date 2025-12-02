@@ -39,10 +39,71 @@ export interface CorrelationData {
 
 export interface SimplifiedPortfolioData {
   date: string;
-  shares: number;
   shareValue: number;
-  gainLoss: number;
   principle: number;
+}
+
+export interface UserPortfolioInput {
+  date: string;
+  principle: number;
+  marketValue: number;
+}
+
+// Convert user-friendly format (principle + market_value) to share_value format
+export function convertToShareValue(data: UserPortfolioInput[]): SimplifiedPortfolioData[] {
+  if (data.length === 0) return [];
+  
+  // Sort by date to ensure chronological order
+  const sorted = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  
+  const result: SimplifiedPortfolioData[] = [];
+  let currentShares = 0;
+  
+  for (let i = 0; i < sorted.length; i++) {
+    const entry = sorted[i];
+    let shareValue: number;
+    
+    if (i === 0) {
+      // First entry: initialize with share value of 1.0
+      shareValue = 1.0;
+      currentShares = entry.principle / shareValue;
+    } else {
+      const prevEntry = sorted[i - 1];
+      const prevShareValue = result[i - 1].shareValue;
+      const prevShares = currentShares;
+      
+      if (entry.principle === prevEntry.principle) {
+        // No new investment/withdrawal - calculate new share value based on market value change
+        shareValue = entry.marketValue / prevShares;
+      } else if (entry.principle > prevEntry.principle) {
+        // New investment - calculate shares bought at current share value
+        const addedPrinciple = entry.principle - prevEntry.principle;
+        // First calculate current share value from existing shares
+        const currentShareValue = entry.marketValue / (prevShares + (addedPrinciple / prevShareValue));
+        shareValue = currentShareValue;
+        currentShares = prevShares + (addedPrinciple / prevShareValue);
+      } else {
+        // Withdrawal - calculate shares sold
+        const withdrawnPrinciple = prevEntry.principle - entry.principle;
+        const withdrawnShares = withdrawnPrinciple / prevShareValue;
+        currentShares = prevShares - withdrawnShares;
+        shareValue = currentShares > 0 ? entry.marketValue / currentShares : prevShareValue;
+      }
+      
+      // Update shares for next iteration if principle changed
+      if (entry.principle !== prevEntry.principle) {
+        currentShares = entry.principle / shareValue;
+      }
+    }
+    
+    result.push({
+      date: entry.date,
+      principle: entry.principle,
+      shareValue: parseFloat(shareValue.toFixed(4)),
+    });
+  }
+  
+  return result;
 }
 
 export function parseCSV(csvText: string): SimplifiedPortfolioData[] | PortfolioData[] {
@@ -50,12 +111,13 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
   // Skip first 2 rows (Sheet name and header)
   const header = lines[1].toLowerCase();
   
-  // Detect if it's the simplified format (no SHA, SHE, CSI300 columns)
-  const isSimplifiedFormat = !header.includes('sha') && !header.includes('she') && !header.includes('csi300');
+  // Detect format type
+  const isOldFullFormat = header.includes('sha') && header.includes('she') && header.includes('csi300');
+  const isUserFriendlyFormat = header.includes('market_value') || header.includes('marketvalue') || header.includes('market value');
   
-  if (isSimplifiedFormat) {
-    // Parse simplified format (only personal portfolio data)
-    const parsedData: SimplifiedPortfolioData[] = [];
+  if (isUserFriendlyFormat) {
+    // Parse user-friendly format (date, principle, market_value)
+    const userInput: UserPortfolioInput[] = [];
 
     lines.slice(2).forEach(line => {
       const values = line.split(',').map(v => v.trim());
@@ -64,21 +126,20 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
       const dateParts = values[0].split('/');
       const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
       
-      const row = {
-        date: formattedDate,
-        shares: parseFloat(values[1]) || 0,
-        shareValue: parseFloat(values[2]) || 0,
-        gainLoss: parseFloat(values[3].replace(/[()]/g, '').replace(',', '')) * (values[3].includes('(') ? -1 : 1) || 0,
-        principle: parseFloat(values[4]) || 0,
-      };
+      const principle = parseFloat(values[1]) || 0;
+      const marketValue = parseFloat(values[2]) || 0;
       
-      if (row.shareValue > 0) {
-        parsedData.push(row);
+      if (principle > 0 && marketValue > 0) {
+        userInput.push({
+          date: formattedDate,
+          principle,
+          marketValue,
+        });
       }
     });
 
-    return parsedData;
-  } else {
+    return convertToShareValue(userInput);
+  } else if (isOldFullFormat) {
     // Parse old format (includes market indices)
     const parsedData: PortfolioData[] = [];
     let lastValues = {
@@ -122,6 +183,29 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
         nasdaq,
         ftse100,
         hangseng,
+      };
+      
+      if (row.shareValue > 0) {
+        parsedData.push(row);
+      }
+    });
+
+    return parsedData;
+  } else {
+    // Parse old simplified format (date, shares, share_value, gain_loss, principle) - for backward compatibility
+    const parsedData: SimplifiedPortfolioData[] = [];
+
+    lines.slice(2).forEach(line => {
+      const values = line.split(',').map(v => v.trim());
+      
+      // Parse DD/MM/YYYY format to YYYY-MM-DD
+      const dateParts = values[0].split('/');
+      const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+      
+      const row = {
+        date: formattedDate,
+        shareValue: parseFloat(values[2]) || 0,
+        principle: parseFloat(values[4]) || 0,
       };
       
       if (row.shareValue > 0) {
