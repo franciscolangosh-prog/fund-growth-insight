@@ -69,20 +69,53 @@ export const loadPortfolioFromDatabase = async (
 
     if (allEntries.length === 0) return [];
 
-    // Fetch market indices for all dates
-    const dates = allEntries.map(entry => entry.date);
-    const { data: marketIndices, error: marketError } = await supabase
-      .from('market_indices')
-      .select('*')
-      .in('date', dates);
+    // Get date range for market indices query
+    const sortedDates = allEntries.map(entry => entry.date).sort();
+    const minDate = sortedDates[0];
+    const maxDate = sortedDates[sortedDates.length - 1];
 
-    if (marketError) {
-      console.error("Error fetching market indices:", marketError);
+    // Fetch market indices for date range with pagination
+    type MarketIndexRow = {
+      date: string;
+      sha: number | null;
+      she: number | null;
+      csi300: number | null;
+      sp500: number | null;
+      nasdaq: number | null;
+      ftse100: number | null;
+      hangseng: number | null;
+    };
+    const allMarketIndices: MarketIndexRow[] = [];
+    let marketFrom = 0;
+    let marketTo = PAGE_SIZE - 1;
+
+    while (true) {
+      const { data: marketBatch, error: marketError } = await supabase
+        .from('market_indices')
+        .select('*')
+        .gte('date', minDate)
+        .lte('date', maxDate)
+        .order('date', { ascending: true })
+        .range(marketFrom, marketTo);
+
+      if (marketError) {
+        console.error("Error fetching market indices:", marketError);
+        break;
+      }
+
+      if (!marketBatch || marketBatch.length === 0) break;
+
+      allMarketIndices.push(...marketBatch);
+
+      if (marketBatch.length < PAGE_SIZE) break;
+
+      marketFrom += PAGE_SIZE;
+      marketTo += PAGE_SIZE;
     }
 
     // Create a map of market indices by date
     const marketIndicesMap = new Map(
-      marketIndices?.map(mi => [mi.date, mi]) || []
+      allMarketIndices.map(mi => [mi.date, mi])
     );
 
     // Calculate derived fields and merge with market data
