@@ -108,10 +108,44 @@ export function convertToShareValue(data: UserPortfolioInput[]): SimplifiedPortf
   return result;
 }
 
+// Helper function to parse date from various formats to YYYY-MM-DD
+function parseDateToISO(dateStr: string): string {
+  // Try different delimiters: /, -, .
+  let parts: string[] = [];
+  
+  if (dateStr.includes('/')) {
+    parts = dateStr.split('/');
+  } else if (dateStr.includes('-')) {
+    // Check if it's already YYYY-MM-DD format
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return dateStr;
+    }
+    parts = dateStr.split('-');
+  } else if (dateStr.includes('.')) {
+    parts = dateStr.split('.');
+  }
+  
+  if (parts.length === 3) {
+    // Assume DD/MM/YYYY or DD-MM-YYYY format
+    const day = parts[0].padStart(2, '0');
+    const month = parts[1].padStart(2, '0');
+    const year = parts[2];
+    return `${year}-${month}-${day}`;
+  }
+  
+  return dateStr; // Return as-is if can't parse
+}
+
 export function parseCSV(csvText: string): SimplifiedPortfolioData[] | PortfolioData[] {
   const lines = csvText.trim().split('\n');
-  // Skip first 2 rows (Sheet name and header)
-  const header = lines[1].toLowerCase();
+  
+  // Detect if first line is a sheet name or actual header
+  const firstLine = lines[0].toLowerCase();
+  const hasSheetNameRow = !firstLine.includes('date') && !firstLine.includes('principle') && !firstLine.includes('market');
+  
+  const headerLineIndex = hasSheetNameRow ? 1 : 0;
+  const dataStartIndex = headerLineIndex + 1;
+  const header = lines[headerLineIndex].toLowerCase();
   
   // Detect format type
   const isOldFullFormat = header.includes('sha') && header.includes('she') && header.includes('csi300');
@@ -121,13 +155,11 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
     // Parse user-friendly format (date, principle, market_value)
     const userInput: UserPortfolioInput[] = [];
 
-    lines.slice(2).forEach(line => {
+    lines.slice(dataStartIndex).forEach(line => {
+      if (!line.trim()) return; // Skip empty lines
       const values = line.split(',').map(v => v.trim());
       
-      // Parse DD/MM/YYYY format to YYYY-MM-DD
-      const dateParts = values[0].split('/');
-      const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-      
+      const formattedDate = parseDateToISO(values[0]);
       const principle = parseFloat(values[1]) || 0;
       const marketValue = parseFloat(values[2]) || 0;
       
@@ -151,13 +183,11 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
       hangseng: 0,
     };
 
-    lines.slice(2).forEach(line => {
+    lines.slice(dataStartIndex).forEach(line => {
+      if (!line.trim()) return;
       const values = line.split(',').map(v => v.trim());
       
-      // Parse DD/MM/YYYY format to YYYY-MM-DD
-      const dateParts = values[0].split('/');
-      const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-      
+      const formattedDate = parseDateToISO(values[0]);
       // Parse global indices, use previous value if missing
       const sp500 = parseFloat(values[10]) || lastValues.sp500;
       const nasdaq = parseFloat(values[11]) || lastValues.nasdaq;
@@ -197,13 +227,11 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
     // Parse old simplified format (date, shares, share_value, gain_loss, principle) - for backward compatibility
     const parsedData: SimplifiedPortfolioData[] = [];
 
-    lines.slice(2).forEach(line => {
+    lines.slice(dataStartIndex).forEach(line => {
+      if (!line.trim()) return;
       const values = line.split(',').map(v => v.trim());
       
-      // Parse DD/MM/YYYY format to YYYY-MM-DD
-      const dateParts = values[0].split('/');
-      const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-      
+      const formattedDate = parseDateToISO(values[0]);
       const shares = parseFloat(values[1]) || 0;
       const shareValue = parseFloat(values[2]) || 0;
       const principle = parseFloat(values[4]) || 0;
