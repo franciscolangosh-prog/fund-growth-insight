@@ -61,6 +61,7 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          market_value: number | null
           portfolio_id: string
           principle: number
           share_value: number
@@ -69,6 +70,7 @@ export type Database = {
           created_at?: string
           date: string
           id?: string
+          market_value?: number | null
           portfolio_id: string
           principle: number
           share_value: number
@@ -77,6 +79,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          market_value?: number | null
           portfolio_id?: string
           principle?: number
           share_value?: number

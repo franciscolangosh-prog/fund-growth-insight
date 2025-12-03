@@ -50,17 +50,11 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
         const to = format(dateRange.to, "yyyy-MM-dd");
         const data = await getRecordsByDateRange(portfolioId, from, to);
         
-        // Load full portfolio history to reconstruct market values
-        const fullData = await loadPortfolioFromDatabase(portfolioId);
-        const marketValueMap = new Map(
-          fullData.map(d => [d.date, d.marketValue])
-        );
-        
         setRecords(data.map(d => ({
           id: d.id,
           date: new Date(d.date),
           principle: Number(d.principle),
-          marketValue: marketValueMap.get(d.date) || Number(d.principle),
+          marketValue: Number((d as any).market_value) || Number(d.principle),
         })));
       }
     };
@@ -105,6 +99,7 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
       const success = await updatePortfolioRecord(editingRecord.id, {
         principle: newRecord.principle,
         shareValue: newRecord.shareValue,
+        marketValue: values.marketValue,
       });
       if (success) {
         toast.success(`Record for ${dateStr} updated successfully`);
@@ -113,13 +108,11 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
           const from = format(dateRange.from, "yyyy-MM-dd");
           const to = format(dateRange.to, "yyyy-MM-dd");
           const data = await getRecordsByDateRange(portfolioId, from, to);
-          const fullData = await loadPortfolioFromDatabase(portfolioId);
-          const marketValueMap = new Map(fullData.map(d => [d.date, d.marketValue]));
           setRecords(data.map(d => ({
             id: d.id,
             date: new Date(d.date),
             principle: Number(d.principle),
-            marketValue: marketValueMap.get(d.date) || Number(d.principle),
+            marketValue: Number((d as any).market_value) || Number(d.principle),
           })));
         }
         onRecordSaved();
@@ -131,6 +124,7 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
         date: dateStr,
         principle: newRecord.principle,
         shareValue: newRecord.shareValue,
+        marketValue: values.marketValue,
       });
       if (success) {
         toast.success(`Record for ${dateStr} added successfully`);
@@ -139,13 +133,11 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
           const from = format(dateRange.from, "yyyy-MM-dd");
           const to = format(dateRange.to, "yyyy-MM-dd");
           const data = await getRecordsByDateRange(portfolioId, from, to);
-          const fullData = await loadPortfolioFromDatabase(portfolioId);
-          const marketValueMap = new Map(fullData.map(d => [d.date, d.marketValue]));
           setRecords(data.map(d => ({
             id: d.id,
             date: new Date(d.date),
             principle: Number(d.principle),
-            marketValue: marketValueMap.get(d.date) || Number(d.principle),
+            marketValue: Number((d as any).market_value) || Number(d.principle),
           })));
         }
         onRecordSaved();
