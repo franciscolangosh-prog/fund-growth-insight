@@ -65,6 +65,7 @@ export type Database = {
           portfolio_id: string
           principle: number
           share_value: number
+          shares: number | null
         }
         Insert: {
           created_at?: string
@@ -74,6 +75,7 @@ export type Database = {
           portfolio_id: string
           principle: number
           share_value: number
+          shares?: number | null
         }
         Update: {
           created_at?: string
@@ -83,6 +85,7 @@ export type Database = {
           portfolio_id?: string
           principle?: number
           share_value?: number
+          shares?: number | null
         }
         Relationships: [
           {

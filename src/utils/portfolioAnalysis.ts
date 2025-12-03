@@ -39,6 +39,7 @@ export interface CorrelationData {
 
 export interface SimplifiedPortfolioData {
   date: string;
+  shares: number;
   shareValue: number;
   principle: number;
   marketValue: number;
@@ -51,6 +52,9 @@ export interface UserPortfolioInput {
 }
 
 // Convert user-friendly format (principle + market_value) to share_value format
+// Logic: shares = principle (treating initial investment as 1 share per dollar)
+//        share_value = market_value / shares
+// When principle changes: buy/sell shares at previous share_value
 export function convertToShareValue(data: UserPortfolioInput[]): SimplifiedPortfolioData[] {
   if (data.length === 0) return [];
   
@@ -62,47 +66,42 @@ export function convertToShareValue(data: UserPortfolioInput[]): SimplifiedPortf
   
   for (let i = 0; i < sorted.length; i++) {
     const entry = sorted[i];
-    let shareValue: number;
     
     if (i === 0) {
-      // First entry: initialize with share value of 1.0
-      shareValue = 1.0;
-      currentShares = entry.principle / shareValue;
+      // Day 1: shares = principle, share_value = market_value / shares
+      currentShares = entry.principle;
+      const shareValue = entry.marketValue / currentShares;
+      
+      result.push({
+        date: entry.date,
+        shares: parseFloat(currentShares.toFixed(4)),
+        shareValue: parseFloat(shareValue.toFixed(4)),
+        principle: entry.principle,
+        marketValue: entry.marketValue,
+      });
     } else {
       const prevEntry = sorted[i - 1];
       const prevShareValue = result[i - 1].shareValue;
-      const prevShares = currentShares;
       
-      if (entry.principle === prevEntry.principle) {
-        // No new investment/withdrawal - calculate new share value based on market value change
-        shareValue = entry.marketValue / prevShares;
-      } else if (entry.principle > prevEntry.principle) {
-        // New investment - calculate shares bought at current share value
-        const addedPrinciple = entry.principle - prevEntry.principle;
-        // First calculate current share value from existing shares
-        const currentShareValue = entry.marketValue / (prevShares + (addedPrinciple / prevShareValue));
-        shareValue = currentShareValue;
-        currentShares = prevShares + (addedPrinciple / prevShareValue);
-      } else {
-        // Withdrawal - calculate shares sold
-        const withdrawnPrinciple = prevEntry.principle - entry.principle;
-        const withdrawnShares = withdrawnPrinciple / prevShareValue;
-        currentShares = prevShares - withdrawnShares;
-        shareValue = currentShares > 0 ? entry.marketValue / currentShares : prevShareValue;
-      }
-      
-      // Update shares for next iteration if principle changed
       if (entry.principle !== prevEntry.principle) {
-        currentShares = entry.principle / shareValue;
+        // Principle changed - buy/sell shares at previous share_value
+        const principleChange = entry.principle - prevEntry.principle;
+        const sharesChange = principleChange / prevShareValue;
+        currentShares = currentShares + sharesChange;
       }
+      // If principle unchanged, shares remain the same
+      
+      // Calculate new share_value based on current market_value and shares
+      const shareValue = currentShares > 0 ? entry.marketValue / currentShares : 0;
+      
+      result.push({
+        date: entry.date,
+        shares: parseFloat(currentShares.toFixed(4)),
+        shareValue: parseFloat(shareValue.toFixed(4)),
+        principle: entry.principle,
+        marketValue: entry.marketValue,
+      });
     }
-    
-    result.push({
-      date: entry.date,
-      principle: entry.principle,
-      shareValue: parseFloat(shareValue.toFixed(4)),
-      marketValue: entry.marketValue,
-    });
   }
   
   return result;
@@ -238,9 +237,10 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
       
       const row = {
         date: formattedDate,
+        shares,
         shareValue,
         principle,
-        marketValue: shares * shareValue, // Calculate from shares * shareValue
+        marketValue: shares * shareValue,
       };
       
       if (row.shareValue > 0) {
