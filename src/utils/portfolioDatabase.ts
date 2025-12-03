@@ -24,6 +24,7 @@ export const savePortfolioToDatabase = async (
       date: entry.date,
       principle: entry.principle,
       share_value: 'shareValue' in entry ? entry.shareValue : entry.shareValue,
+      market_value: 'marketValue' in entry ? entry.marketValue : null,
     }));
 
     const { error: dataError } = await supabase
@@ -184,6 +185,7 @@ export const addPortfolioRecord = async (
     date: string;
     principle: number;
     shareValue: number;
+    marketValue: number;
   }
 ) => {
   try {
@@ -194,6 +196,7 @@ export const addPortfolioRecord = async (
         date: record.date,
         principle: record.principle,
         share_value: record.shareValue,
+        market_value: record.marketValue,
       });
 
     if (error) throw error;
@@ -209,6 +212,7 @@ export const updatePortfolioRecord = async (
   record: {
     principle: number;
     shareValue: number;
+    marketValue: number;
   }
 ) => {
   try {
@@ -217,6 +221,7 @@ export const updatePortfolioRecord = async (
       .update({
         principle: record.principle,
         share_value: record.shareValue,
+        market_value: record.marketValue,
       })
       .eq('id', recordId);
 

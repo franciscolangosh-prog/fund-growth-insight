@@ -41,6 +41,7 @@ export interface SimplifiedPortfolioData {
   date: string;
   shareValue: number;
   principle: number;
+  marketValue: number;
 }
 
 export interface UserPortfolioInput {
@@ -100,6 +101,7 @@ export function convertToShareValue(data: UserPortfolioInput[]): SimplifiedPortf
       date: entry.date,
       principle: entry.principle,
       shareValue: parseFloat(shareValue.toFixed(4)),
+      marketValue: entry.marketValue,
     });
   }
   
@@ -202,10 +204,15 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
       const dateParts = values[0].split('/');
       const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
       
+      const shares = parseFloat(values[1]) || 0;
+      const shareValue = parseFloat(values[2]) || 0;
+      const principle = parseFloat(values[4]) || 0;
+      
       const row = {
         date: formattedDate,
-        shareValue: parseFloat(values[2]) || 0,
-        principle: parseFloat(values[4]) || 0,
+        shareValue,
+        principle,
+        marketValue: shares * shareValue, // Calculate from shares * shareValue
       };
       
       if (row.shareValue > 0) {
