@@ -98,6 +98,7 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
     if (formMode === "edit" && editingRecord?.id) {
       const success = await updatePortfolioRecord(editingRecord.id, {
         principle: newRecord.principle,
+        shares: newRecord.shares,
         shareValue: newRecord.shareValue,
         marketValue: values.marketValue,
       });
@@ -123,6 +124,7 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
       const success = await addPortfolioRecord(portfolioId, {
         date: dateStr,
         principle: newRecord.principle,
+        shares: newRecord.shares,
         shareValue: newRecord.shareValue,
         marketValue: values.marketValue,
       });

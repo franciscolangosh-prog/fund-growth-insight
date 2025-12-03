@@ -23,7 +23,8 @@ export const savePortfolioToDatabase = async (
       portfolio_id: portfolio.id,
       date: entry.date,
       principle: entry.principle,
-      share_value: 'shareValue' in entry ? entry.shareValue : entry.shareValue,
+      share_value: entry.shareValue,
+      shares: 'shares' in entry ? entry.shares : null,
       market_value: 'marketValue' in entry ? entry.marketValue : null,
     }));
 
@@ -123,8 +124,8 @@ export const loadPortfolioFromDatabase = async (
     return allEntries.map((entry, index) => {
       const principle = Number(entry.principle) || 0;
       const shareValue = Number(entry.share_value) || 0;
-      const shares = shareValue > 0 ? principle / shareValue : 0;
-      const marketValue = shares * shareValue;
+      const shares = Number((entry as any).shares) || (shareValue > 0 ? principle / shareValue : 0);
+      const marketValue = Number((entry as any).market_value) || shares * shareValue;
       const gainLoss = marketValue - principle;
       
       // Calculate daily gain
@@ -184,6 +185,7 @@ export const addPortfolioRecord = async (
   record: {
     date: string;
     principle: number;
+    shares: number;
     shareValue: number;
     marketValue: number;
   }
@@ -195,6 +197,7 @@ export const addPortfolioRecord = async (
         portfolio_id: portfolioId,
         date: record.date,
         principle: record.principle,
+        shares: record.shares,
         share_value: record.shareValue,
         market_value: record.marketValue,
       });
@@ -211,6 +214,7 @@ export const updatePortfolioRecord = async (
   recordId: string,
   record: {
     principle: number;
+    shares: number;
     shareValue: number;
     marketValue: number;
   }
@@ -220,6 +224,7 @@ export const updatePortfolioRecord = async (
       .from('portfolio_data')
       .update({
         principle: record.principle,
+        shares: record.shares,
         share_value: record.shareValue,
         market_value: record.marketValue,
       })
