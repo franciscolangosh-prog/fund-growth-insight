@@ -51,15 +51,39 @@ export interface UserPortfolioInput {
   marketValue: number;
 }
 
+export interface ConversionResult {
+  data: SimplifiedPortfolioData[];
+  errors: string[];
+}
+
 // Convert user-friendly format (principle + market_value) to share_value format
 // Logic: shares = principle (treating initial investment as 1 share per dollar)
 //        share_value = market_value / shares
 // When principle changes: buy/sell shares at previous share_value
-export function convertToShareValue(data: UserPortfolioInput[]): SimplifiedPortfolioData[] {
-  if (data.length === 0) return [];
+// 
+// Business Rules:
+// - Day 1: principle must be > 0 (initial investment required)
+// - Other days: principle can be 0 or negative (withdrawals exceeding total invested)
+// - shares and shareValue must always be > 0
+export function convertToShareValue(data: UserPortfolioInput[]): ConversionResult {
+  const errors: string[] = [];
+  
+  if (data.length === 0) return { data: [], errors: ['No data to process'] };
   
   // Sort by date to ensure chronological order
   const sorted = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  
+  // Validate Day 1: principle must be positive
+  if (sorted[0].principle <= 0) {
+    errors.push(`Day 1 (${sorted[0].date}): principle must be positive, got ${sorted[0].principle}`);
+    return { data: [], errors };
+  }
+  
+  // Validate Day 1: market_value must be positive
+  if (sorted[0].marketValue <= 0) {
+    errors.push(`Day 1 (${sorted[0].date}): market_value must be positive, got ${sorted[0].marketValue}`);
+    return { data: [], errors };
+  }
   
   const result: SimplifiedPortfolioData[] = [];
   let currentShares = 0;
@@ -91,8 +115,20 @@ export function convertToShareValue(data: UserPortfolioInput[]): SimplifiedPortf
       }
       // If principle unchanged, shares remain the same
       
+      // Validate: shares must remain positive after transaction
+      if (currentShares <= 0) {
+        errors.push(`Row ${i + 1} (${entry.date}): withdrawal too large, shares would become ${currentShares.toFixed(4)} (must be > 0)`);
+        return { data: [], errors };
+      }
+      
+      // Validate: market_value must be positive
+      if (entry.marketValue <= 0) {
+        errors.push(`Row ${i + 1} (${entry.date}): market_value must be positive, got ${entry.marketValue}`);
+        return { data: [], errors };
+      }
+      
       // Calculate new share_value based on current market_value and shares
-      const shareValue = currentShares > 0 ? entry.marketValue / currentShares : 0;
+      const shareValue = entry.marketValue / currentShares;
       
       result.push({
         date: entry.date,
@@ -104,7 +140,7 @@ export function convertToShareValue(data: UserPortfolioInput[]): SimplifiedPortf
     }
   }
   
-  return result;
+  return { data: result, errors: [] };
 }
 
 // Helper function to parse date from various formats to YYYY-MM-DD
@@ -135,7 +171,12 @@ function parseDateToISO(dateStr: string): string {
   return dateStr; // Return as-is if can't parse
 }
 
-export function parseCSV(csvText: string): SimplifiedPortfolioData[] | PortfolioData[] {
+export interface ParseCSVResult {
+  data: SimplifiedPortfolioData[] | PortfolioData[];
+  errors: string[];
+}
+
+export function parseCSV(csvText: string): ParseCSVResult {
   const lines = csvText.trim().split('\n');
   
   // Detect if first line is a sheet name or actual header
@@ -152,6 +193,8 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
   
   if (isUserFriendlyFormat) {
     // Parse user-friendly format (date, principle, market_value)
+    // Note: principle can be 0 or negative for non-first rows (withdrawals exceeding total invested)
+    // Only market_value must always be positive
     const userInput: UserPortfolioInput[] = [];
 
     lines.slice(dataStartIndex).forEach(line => {
@@ -159,10 +202,13 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
       const values = line.split(',').map(v => v.trim());
       
       const formattedDate = parseDateToISO(values[0]);
-      const principle = parseFloat(values[1]) || 0;
-      const marketValue = parseFloat(values[2]) || 0;
+      const principle = parseFloat(values[1]);
+      const marketValue = parseFloat(values[2]);
       
-      if (principle > 0 && marketValue > 0) {
+      // Only skip rows with invalid/missing values (NaN)
+      // Allow principle to be any number (including 0 or negative)
+      // market_value validation will be done in convertToShareValue
+      if (!isNaN(principle) && !isNaN(marketValue)) {
         userInput.push({
           date: formattedDate,
           principle,
@@ -171,7 +217,8 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
       }
     });
 
-    return convertToShareValue(userInput);
+    const conversionResult = convertToShareValue(userInput);
+    return { data: conversionResult.data, errors: conversionResult.errors };
   } else if (isOldFullFormat) {
     // Parse old format (includes market indices)
     const parsedData: PortfolioData[] = [];
@@ -221,7 +268,7 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
       }
     });
 
-    return parsedData;
+    return { data: parsedData, errors: [] };
   } else {
     // Parse old simplified format (date, shares, share_value, gain_loss, principle) - for backward compatibility
     const parsedData: SimplifiedPortfolioData[] = [];
@@ -248,7 +295,7 @@ export function parseCSV(csvText: string): SimplifiedPortfolioData[] | Portfolio
       }
     });
 
-    return parsedData;
+    return { data: parsedData, errors: [] };
   }
 }
 

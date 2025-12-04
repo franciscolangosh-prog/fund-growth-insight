@@ -25,23 +25,34 @@ const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
 export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
   const [viewMode, setViewMode] = useState<'monthly' | 'quarterly'>('monthly');
 
-  const { heatmapData, years, monthlyStats } = useMemo(() => {
+  const { heatmapData, years, monthlyStats, yearlyReturns } = useMemo(() => {
     if (data.length < 2) {
-      return { heatmapData: new Map(), years: [], monthlyStats: [] };
+      return { heatmapData: new Map(), years: [], monthlyStats: [], yearlyReturns: new Map() };
     }
 
     // Group data by year-month
     const monthlyData = new Map<string, { first: PortfolioData; last: PortfolioData }>();
+    // Group data by year for simple annual return calculation
+    const yearlyData = new Map<number, { first: PortfolioData; last: PortfolioData }>();
     
     data.forEach(d => {
       const date = new Date(d.date);
-      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      const year = date.getFullYear();
+      const key = `${year}-${date.getMonth()}`;
       
       if (!monthlyData.has(key)) {
         monthlyData.set(key, { first: d, last: d });
       } else {
         const existing = monthlyData.get(key)!;
         monthlyData.set(key, { first: existing.first, last: d });
+      }
+
+      // Track yearly first/last for simple annual return
+      if (!yearlyData.has(year)) {
+        yearlyData.set(year, { first: d, last: d });
+      } else {
+        const existing = yearlyData.get(year)!;
+        yearlyData.set(year, { first: existing.first, last: d });
       }
     });
 
@@ -51,6 +62,13 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
       const [year, month] = key.split('-').map(Number);
       const monthReturn = ((value.last.shareValue - value.first.shareValue) / value.first.shareValue) * 100;
       returns.push({ year, month, return: monthReturn });
+    });
+
+    // Calculate simple annual returns (same logic as Annual Table)
+    const annualReturns = new Map<number, number>();
+    yearlyData.forEach((value, year) => {
+      const annualReturn = ((value.last.shareValue - value.first.shareValue) / value.first.shareValue) * 100;
+      annualReturns.set(year, annualReturn);
     });
 
     // Get unique years
@@ -73,7 +91,7 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
       return { month: MONTHS[monthIdx], avg, winRate, count: monthReturns.length };
     });
 
-    return { heatmapData: heatmap, years: uniqueYears, monthlyStats: monthStats };
+    return { heatmapData: heatmap, years: uniqueYears, monthlyStats: monthStats, yearlyReturns: annualReturns };
   }, [data]);
 
   // Calculate quarterly data
@@ -220,13 +238,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
               </thead>
               <tbody>
                 {years.map(year => {
-                  // Calculate annual return for this year
-                  const yearReturns = MONTHS.map((_, monthIdx) => heatmapData.get(`${year}-${monthIdx}`))
-                    .filter(r => r !== undefined) as number[];
-                  const annualReturn = yearReturns.length > 0
-                    ? yearReturns.reduce((acc, r) => acc * (1 + r / 100), 1) - 1
-                    : 0;
-                  const annualReturnPercent = annualReturn * 100;
+                  // Use simple annual return (same as Annual Table)
+                  const annualReturnPercent = yearlyReturns.get(year) ?? 0;
 
                   return (
                     <tr key={year} className="border-t">
@@ -269,13 +282,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
               </thead>
               <tbody>
                 {years.map(year => {
-                  // Calculate annual return for this year
-                  const yearReturns = QUARTERS.map((_, quarterIdx) => quarterlyHeatmapData.get(`${year}-${quarterIdx + 1}`))
-                    .filter(r => r !== undefined) as number[];
-                  const annualReturn = yearReturns.length > 0
-                    ? yearReturns.reduce((acc, r) => acc * (1 + r / 100), 1) - 1
-                    : 0;
-                  const annualReturnPercent = annualReturn * 100;
+                  // Use simple annual return (same as Annual Table)
+                  const annualReturnPercent = yearlyReturns.get(year) ?? 0;
 
                   return (
                     <tr key={year} className="border-t">

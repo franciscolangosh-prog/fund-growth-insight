@@ -27,9 +27,22 @@ export function FileUpload({ onFileUploaded }: FileUploadProps) {
     const reader = new FileReader();
     reader.onload = async (e) => {
       const csvText = e.target?.result as string;
-      const parsedData = parseCSV(csvText);
+      const parseResult = parseCSV(csvText);
       
-      const portfolioId = await savePortfolioToDatabase(portfolioName, parsedData);
+      // Check for parsing/validation errors
+      if (parseResult.errors.length > 0) {
+        parseResult.errors.forEach(error => toast.error(error));
+        setIsUploading(false);
+        return;
+      }
+      
+      if (parseResult.data.length === 0) {
+        toast.error("No valid data found in the CSV file");
+        setIsUploading(false);
+        return;
+      }
+      
+      const portfolioId = await savePortfolioToDatabase(portfolioName, parseResult.data);
       
       if (portfolioId) {
         toast.success("Portfolio saved successfully!");

@@ -54,15 +54,19 @@ const Index = () => {
         try {
           const response = await fetch("/PORTFOLIO_SNAPSHOT.csv");
           const csvText = await response.text();
-          const parsedData = parseCSV(csvText);
+          const parseResult = parseCSV(csvText);
           
-          const portfolioId = await savePortfolioToDatabase("Default Portfolio", parsedData);
-          if (portfolioId) {
-            setSelectedPortfolioId(portfolioId);
-            await loadPortfolios();
-            // Load the full portfolio data from database
-            const fullPortfolioData = await loadPortfolioFromDatabase(portfolioId);
-            setData(fullPortfolioData);
+          if (parseResult.errors.length > 0) {
+            console.error("Error parsing default portfolio:", parseResult.errors);
+          } else if (parseResult.data.length > 0) {
+            const portfolioId = await savePortfolioToDatabase("Default Portfolio", parseResult.data);
+            if (portfolioId) {
+              setSelectedPortfolioId(portfolioId);
+              await loadPortfolios();
+              // Load the full portfolio data from database
+              const fullPortfolioData = await loadPortfolioFromDatabase(portfolioId);
+              setData(fullPortfolioData);
+            }
           }
         } catch (error) {
           console.error("Error loading default portfolio data:", error);
