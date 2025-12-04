@@ -58,21 +58,21 @@ export const PortfolioSelector = ({
           <SelectContent>
             {portfolios.map((portfolio) => (
               <SelectItem key={portfolio.id} value={portfolio.id}>
-                <div className="flex items-center justify-between w-full gap-2">
-                  <span>{portfolio.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                    onClick={(e) => handleDelete(portfolio.id, e)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
+                {portfolio.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        {selectedPortfolioId && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+            onClick={(e) => handleDelete(selectedPortfolioId, e)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </Card>
   );
