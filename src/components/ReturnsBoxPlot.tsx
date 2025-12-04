@@ -7,7 +7,7 @@ interface ReturnsBoxPlotProps {
   data: PortfolioData[];
 }
 
-type BenchmarkKey = 'fund' | 'csi300' | 'sp500' | 'nasdaq' | 'sha' | 'she' | 'ftse100' | 'hangseng';
+type BenchmarkKey = 'csi300' | 'sp500' | 'nasdaq' | 'sha' | 'she' | 'ftse100' | 'hangseng';
 
 interface BoxPlotStats {
   min: number;
@@ -20,7 +20,6 @@ interface BoxPlotStats {
 }
 
 const BENCHMARKS: { key: BenchmarkKey; label: string; color: string }[] = [
-  { key: 'fund', label: 'My Fund', color: 'hsl(var(--primary))' },
   { key: 'csi300', label: 'CSI 300', color: '#10b981' },
   { key: 'sp500', label: 'S&P 500', color: '#ef4444' },
   { key: 'nasdaq', label: 'Nasdaq', color: '#8b5cf6' },
@@ -29,6 +28,8 @@ const BENCHMARKS: { key: BenchmarkKey; label: string; color: string }[] = [
   { key: 'ftse100', label: 'FTSE 100', color: '#ec4899' },
   { key: 'hangseng', label: 'Hang Seng', color: '#84cc16' },
 ];
+
+const FUND_COLOR = '#4338ca';
 
 const PERIODS = [
   { key: '1Y', label: '1 Year', days: 252 },
@@ -63,51 +64,63 @@ function calculateBoxPlotStats(values: number[]): BoxPlotStats | null {
   };
 }
 
-export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
-  const [selectedBenchmark, setSelectedBenchmark] = useState<BenchmarkKey>('fund');
+function calculateReturnsForKey(data: PortfolioData[], days: number, key: 'fund' | BenchmarkKey): number[] {
+  const returns: number[] = [];
+  const years = days / 252;
 
-  const boxPlotData = useMemo(() => {
-    const results: Record<string, BoxPlotStats | null> = {};
+  for (let i = days; i < data.length; i += 20) {
+    const startIdx = i - days;
+    let startValue: number, endValue: number;
+
+    if (key === 'fund') {
+      startValue = data[startIdx].shareValue;
+      endValue = data[i].shareValue;
+    } else {
+      startValue = data[startIdx][key] as number;
+      endValue = data[i][key] as number;
+    }
+
+    if (startValue > 0 && endValue > 0) {
+      const annualizedReturn = (Math.pow(endValue / startValue, 1 / years) - 1) * 100;
+      returns.push(annualizedReturn);
+    }
+  }
+
+  return returns;
+}
+
+export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
+  const [selectedBenchmark, setSelectedBenchmark] = useState<BenchmarkKey>('csi300');
+
+  const { fundData, benchmarkData } = useMemo(() => {
+    const fundResults: Record<string, BoxPlotStats | null> = {};
+    const benchmarkResults: Record<string, BoxPlotStats | null> = {};
 
     for (const period of PERIODS) {
       const { days, key } = period;
       if (data.length < days) {
-        results[key] = null;
+        fundResults[key] = null;
+        benchmarkResults[key] = null;
         continue;
       }
 
-      const returns: number[] = [];
-      const years = days / 252;
+      const fundReturns = calculateReturnsForKey(data, days, 'fund');
+      const benchmarkReturns = calculateReturnsForKey(data, days, selectedBenchmark);
 
-      // Calculate rolling returns every 20 days for efficiency
-      for (let i = days; i < data.length; i += 20) {
-        const startIdx = i - days;
-        let startValue: number, endValue: number;
-
-        if (selectedBenchmark === 'fund') {
-          startValue = data[startIdx].shareValue;
-          endValue = data[i].shareValue;
-        } else {
-          startValue = data[startIdx][selectedBenchmark] as number;
-          endValue = data[i][selectedBenchmark] as number;
-        }
-
-        if (startValue > 0 && endValue > 0) {
-          const annualizedReturn = (Math.pow(endValue / startValue, 1 / years) - 1) * 100;
-          returns.push(annualizedReturn);
-        }
-      }
-
-      results[key] = calculateBoxPlotStats(returns);
+      fundResults[key] = calculateBoxPlotStats(fundReturns);
+      benchmarkResults[key] = calculateBoxPlotStats(benchmarkReturns);
     }
 
-    return results;
+    return { fundData: fundResults, benchmarkData: benchmarkResults };
   }, [data, selectedBenchmark]);
 
   const selectedBenchmarkInfo = BENCHMARKS.find(b => b.key === selectedBenchmark)!;
 
   // Calculate the scale for the box plots
-  const allValues = Object.values(boxPlotData)
+  const allValues = [
+    ...Object.values(fundData),
+    ...Object.values(benchmarkData)
+  ]
     .filter((stats): stats is BoxPlotStats => stats !== null)
     .flatMap(stats => [stats.min, stats.max]);
   
@@ -121,37 +134,132 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
 
   const getPosition = (value: number) => ((value - scaleMin) / scaleRange) * 100;
 
+  const renderBoxPlot = (stats: BoxPlotStats | null, color: string, yOffset: number) => {
+    if (!stats) return null;
+    
+    return (
+      <>
+        {/* Whisker line (min to max) */}
+        <div 
+          className="absolute h-0.5"
+          style={{ 
+            left: `${getPosition(stats.min)}%`,
+            width: `${getPosition(stats.max) - getPosition(stats.min)}%`,
+            backgroundColor: color,
+            opacity: 0.5,
+            top: `${yOffset}%`,
+            transform: 'translateY(-50%)',
+          }}
+        />
+        
+        {/* Min whisker cap */}
+        <div 
+          className="absolute w-0.5"
+          style={{ 
+            left: `${getPosition(stats.min)}%`,
+            backgroundColor: color,
+            height: '30%',
+            top: `${yOffset - 15}%`,
+          }}
+        />
+        
+        {/* Max whisker cap */}
+        <div 
+          className="absolute w-0.5"
+          style={{ 
+            left: `${getPosition(stats.max)}%`,
+            backgroundColor: color,
+            height: '30%',
+            top: `${yOffset - 15}%`,
+          }}
+        />
+        
+        {/* Box (Q1 to Q3) */}
+        <div 
+          className="absolute rounded border-2"
+          style={{ 
+            left: `${getPosition(stats.q1)}%`,
+            width: `${getPosition(stats.q3) - getPosition(stats.q1)}%`,
+            backgroundColor: `${color}20`,
+            borderColor: color,
+            height: '30%',
+            top: `${yOffset - 15}%`,
+          }}
+        />
+        
+        {/* Median line */}
+        <div 
+          className="absolute w-0.5"
+          style={{ 
+            left: `${getPosition(stats.median)}%`,
+            backgroundColor: color,
+            height: '30%',
+            top: `${yOffset - 15}%`,
+          }}
+        />
+        
+        {/* Mean marker (diamond) */}
+        <div 
+          className="absolute w-2 h-2 -translate-x-1/2 rotate-45"
+          style={{ 
+            left: `${getPosition(stats.mean)}%`,
+            backgroundColor: color,
+            top: `${yOffset}%`,
+            transform: 'translateX(-50%) translateY(-50%) rotate(45deg)',
+          }}
+        />
+      </>
+    );
+  };
+
   return (
     <Card className="col-span-full">
       <CardHeader>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <CardTitle>Return Distribution Box Plot</CardTitle>
-            <CardDescription>Distribution of annualized rolling returns across different periods</CardDescription>
+            <CardDescription>Compare your portfolio vs benchmark across rolling periods</CardDescription>
           </div>
-          <Select value={selectedBenchmark} onValueChange={(v) => setSelectedBenchmark(v as BenchmarkKey)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {BENCHMARKS.map(b => (
-                <SelectItem key={b.key} value={b.key}>{b.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Compare with:</span>
+            <Select value={selectedBenchmark} onValueChange={(v) => setSelectedBenchmark(v as BenchmarkKey)}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BENCHMARKS.map(b => (
+                  <SelectItem key={b.key} value={b.key}>{b.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Legend at top */}
+        <div className="flex gap-6 justify-center text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: FUND_COLOR }} />
+            <span className="font-medium">My Portfolio</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: selectedBenchmarkInfo.color }} />
+            <span className="font-medium">{selectedBenchmarkInfo.label}</span>
+          </div>
+        </div>
+
         {/* Box Plot Visualization */}
-        <div className="space-y-4">
+        <div className="space-y-2">
           {PERIODS.map(period => {
-            const stats = boxPlotData[period.key];
+            const fundStats = fundData[period.key];
+            const benchmarkStats = benchmarkData[period.key];
+            const hasData = fundStats || benchmarkStats;
             
             return (
               <div key={period.key} className="flex items-center gap-4">
                 <div className="w-20 text-sm font-medium text-muted-foreground">{period.label}</div>
-                <div className="flex-1 relative h-12">
-                  {stats ? (
+                <div className="flex-1 relative h-16">
+                  {hasData ? (
                     <>
                       {/* Scale background */}
                       <div className="absolute inset-0 bg-muted/30 rounded" />
@@ -164,63 +272,11 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
                         />
                       )}
                       
-                      {/* Whisker line (min to max) */}
-                      <div 
-                        className="absolute top-1/2 h-0.5 -translate-y-1/2"
-                        style={{ 
-                          left: `${getPosition(stats.min)}%`,
-                          width: `${getPosition(stats.max) - getPosition(stats.min)}%`,
-                          backgroundColor: selectedBenchmarkInfo.color,
-                          opacity: 0.5,
-                        }}
-                      />
+                      {/* Fund box plot (top) */}
+                      {renderBoxPlot(fundStats, FUND_COLOR, 30)}
                       
-                      {/* Min whisker cap */}
-                      <div 
-                        className="absolute top-1/4 h-1/2 w-0.5"
-                        style={{ 
-                          left: `${getPosition(stats.min)}%`,
-                          backgroundColor: selectedBenchmarkInfo.color,
-                        }}
-                      />
-                      
-                      {/* Max whisker cap */}
-                      <div 
-                        className="absolute top-1/4 h-1/2 w-0.5"
-                        style={{ 
-                          left: `${getPosition(stats.max)}%`,
-                          backgroundColor: selectedBenchmarkInfo.color,
-                        }}
-                      />
-                      
-                      {/* Box (Q1 to Q3) */}
-                      <div 
-                        className="absolute top-1/4 h-1/2 rounded border-2"
-                        style={{ 
-                          left: `${getPosition(stats.q1)}%`,
-                          width: `${getPosition(stats.q3) - getPosition(stats.q1)}%`,
-                          backgroundColor: `${selectedBenchmarkInfo.color}20`,
-                          borderColor: selectedBenchmarkInfo.color,
-                        }}
-                      />
-                      
-                      {/* Median line */}
-                      <div 
-                        className="absolute top-1/4 h-1/2 w-0.5"
-                        style={{ 
-                          left: `${getPosition(stats.median)}%`,
-                          backgroundColor: selectedBenchmarkInfo.color,
-                        }}
-                      />
-                      
-                      {/* Mean marker (diamond) */}
-                      <div 
-                        className="absolute top-1/2 w-2 h-2 -translate-x-1/2 -translate-y-1/2 rotate-45"
-                        style={{ 
-                          left: `${getPosition(stats.mean)}%`,
-                          backgroundColor: selectedBenchmarkInfo.color,
-                        }}
-                      />
+                      {/* Benchmark box plot (bottom) */}
+                      {renderBoxPlot(benchmarkStats, selectedBenchmarkInfo.color, 70)}
                     </>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground bg-muted/20 rounded">
@@ -228,13 +284,24 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
                     </div>
                   )}
                 </div>
-                {stats && (
-                  <div className="w-32 text-xs text-muted-foreground text-right">
-                    <span className={stats.median >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      Median: {stats.median >= 0 ? '+' : ''}{stats.median.toFixed(1)}%
-                    </span>
-                  </div>
-                )}
+                <div className="w-40 text-xs space-y-1">
+                  {fundStats && (
+                    <div className="flex justify-between">
+                      <span style={{ color: FUND_COLOR }}>Fund:</span>
+                      <span className={fundStats.median >= 0 ? 'text-green-600' : 'text-red-600'}>
+                        {fundStats.median >= 0 ? '+' : ''}{fundStats.median.toFixed(1)}%
+                      </span>
+                    </div>
+                  )}
+                  {benchmarkStats && (
+                    <div className="flex justify-between">
+                      <span style={{ color: selectedBenchmarkInfo.color }}>{selectedBenchmarkInfo.label}:</span>
+                      <span className={benchmarkStats.median >= 0 ? 'text-green-600' : 'text-red-600'}>
+                        {benchmarkStats.median >= 0 ? '+' : ''}{benchmarkStats.median.toFixed(1)}%
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -247,22 +314,22 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
           <span>{scaleMax.toFixed(0)}%</span>
         </div>
 
-        {/* Legend */}
+        {/* Box plot legend */}
         <div className="flex flex-wrap gap-6 justify-center text-xs text-muted-foreground border-t pt-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-4 rounded border-2" style={{ borderColor: selectedBenchmarkInfo.color, backgroundColor: `${selectedBenchmarkInfo.color}20` }} />
+            <div className="w-8 h-4 rounded border-2 border-muted-foreground bg-muted-foreground/10" />
             <span>IQR (25th-75th)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-0.5 h-4" style={{ backgroundColor: selectedBenchmarkInfo.color }} />
+            <div className="w-0.5 h-4 bg-muted-foreground" />
             <span>Median</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rotate-45" style={{ backgroundColor: selectedBenchmarkInfo.color }} />
+            <div className="w-2 h-2 rotate-45 bg-muted-foreground" />
             <span>Mean</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-0.5" style={{ backgroundColor: selectedBenchmarkInfo.color, opacity: 0.5 }} />
+            <div className="w-8 h-0.5 bg-muted-foreground/50" />
             <span>Range (Min-Max)</span>
           </div>
         </div>
@@ -273,47 +340,54 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
             <thead>
               <tr className="border-b">
                 <th className="text-left py-2 font-medium">Period</th>
+                <th className="text-left py-2 font-medium">Asset</th>
                 <th className="text-right py-2 font-medium">Min</th>
                 <th className="text-right py-2 font-medium">Q1</th>
                 <th className="text-right py-2 font-medium">Median</th>
                 <th className="text-right py-2 font-medium">Q3</th>
                 <th className="text-right py-2 font-medium">Max</th>
                 <th className="text-right py-2 font-medium">Mean</th>
-                <th className="text-right py-2 font-medium">Samples</th>
               </tr>
             </thead>
             <tbody>
               {PERIODS.map(period => {
-                const stats = boxPlotData[period.key];
+                const fundStats = fundData[period.key];
+                const benchmarkStats = benchmarkData[period.key];
+                
                 return (
-                  <tr key={period.key} className="border-b last:border-0">
-                    <td className="py-2 font-medium">{period.label}</td>
-                    {stats ? (
-                      <>
-                        <td className={`text-right py-2 ${stats.min >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {stats.min.toFixed(1)}%
-                        </td>
-                        <td className={`text-right py-2 ${stats.q1 >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {stats.q1.toFixed(1)}%
-                        </td>
-                        <td className={`text-right py-2 font-semibold ${stats.median >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {stats.median.toFixed(1)}%
-                        </td>
-                        <td className={`text-right py-2 ${stats.q3 >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {stats.q3.toFixed(1)}%
-                        </td>
-                        <td className={`text-right py-2 ${stats.max >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {stats.max.toFixed(1)}%
-                        </td>
-                        <td className={`text-right py-2 ${stats.mean >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {stats.mean.toFixed(1)}%
-                        </td>
-                        <td className="text-right py-2 text-muted-foreground">{stats.count}</td>
-                      </>
-                    ) : (
-                      <td colSpan={7} className="text-center py-2 text-muted-foreground">Insufficient data</td>
-                    )}
-                  </tr>
+                  <>
+                    <tr key={`${period.key}-fund`} className="border-b">
+                      <td rowSpan={2} className="py-2 font-medium align-middle">{period.label}</td>
+                      <td className="py-2" style={{ color: FUND_COLOR }}>My Portfolio</td>
+                      {fundStats ? (
+                        <>
+                          <td className={`text-right py-2 ${fundStats.min >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fundStats.min.toFixed(1)}%</td>
+                          <td className={`text-right py-2 ${fundStats.q1 >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fundStats.q1.toFixed(1)}%</td>
+                          <td className={`text-right py-2 font-semibold ${fundStats.median >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fundStats.median.toFixed(1)}%</td>
+                          <td className={`text-right py-2 ${fundStats.q3 >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fundStats.q3.toFixed(1)}%</td>
+                          <td className={`text-right py-2 ${fundStats.max >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fundStats.max.toFixed(1)}%</td>
+                          <td className={`text-right py-2 ${fundStats.mean >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fundStats.mean.toFixed(1)}%</td>
+                        </>
+                      ) : (
+                        <td colSpan={6} className="text-center py-2 text-muted-foreground">Insufficient data</td>
+                      )}
+                    </tr>
+                    <tr key={`${period.key}-benchmark`} className="border-b">
+                      <td className="py-2" style={{ color: selectedBenchmarkInfo.color }}>{selectedBenchmarkInfo.label}</td>
+                      {benchmarkStats ? (
+                        <>
+                          <td className={`text-right py-2 ${benchmarkStats.min >= 0 ? 'text-green-600' : 'text-red-600'}`}>{benchmarkStats.min.toFixed(1)}%</td>
+                          <td className={`text-right py-2 ${benchmarkStats.q1 >= 0 ? 'text-green-600' : 'text-red-600'}`}>{benchmarkStats.q1.toFixed(1)}%</td>
+                          <td className={`text-right py-2 font-semibold ${benchmarkStats.median >= 0 ? 'text-green-600' : 'text-red-600'}`}>{benchmarkStats.median.toFixed(1)}%</td>
+                          <td className={`text-right py-2 ${benchmarkStats.q3 >= 0 ? 'text-green-600' : 'text-red-600'}`}>{benchmarkStats.q3.toFixed(1)}%</td>
+                          <td className={`text-right py-2 ${benchmarkStats.max >= 0 ? 'text-green-600' : 'text-red-600'}`}>{benchmarkStats.max.toFixed(1)}%</td>
+                          <td className={`text-right py-2 ${benchmarkStats.mean >= 0 ? 'text-green-600' : 'text-red-600'}`}>{benchmarkStats.mean.toFixed(1)}%</td>
+                        </>
+                      ) : (
+                        <td colSpan={6} className="text-center py-2 text-muted-foreground">Insufficient data</td>
+                      )}
+                    </tr>
+                  </>
                 );
               })}
             </tbody>
@@ -322,10 +396,9 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
 
         {/* Interpretation */}
         <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg">
-          <strong>How to read:</strong> The box shows the interquartile range (middle 50% of returns). 
-          A narrow box indicates consistent returns, while a wide box shows high variability. 
-          The median line shows the typical return, and whiskers extend to the min/max values.
-          Compare different benchmarks to see relative risk-return profiles.
+          <strong>How to read:</strong> Each row shows your portfolio (top, blue) vs the selected benchmark (bottom, colored). 
+          The box represents the middle 50% of returns. A narrower box means more consistent performance.
+          Compare medians to see which performs better on a typical basis.
         </div>
       </CardContent>
     </Card>
