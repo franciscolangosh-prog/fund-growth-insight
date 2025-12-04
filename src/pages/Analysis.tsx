@@ -10,6 +10,7 @@ import { QuickInsightsCard } from "@/components/QuickInsightsCard";
 import { RiskMetricsCard } from "@/components/RiskMetricsCard";
 import { DrawdownChart } from "@/components/DrawdownChart";
 import { RollingReturnsChart } from "@/components/RollingReturnsChart";
+import { ReturnsBoxPlot } from "@/components/ReturnsBoxPlot";
 import { InvestmentGrowthCalculator } from "@/components/InvestmentGrowthCalculator";
 import { MonthlyReturnsHeatmap } from "@/components/MonthlyReturnsHeatmap";
 import { BestWorstPeriodsCard } from "@/components/BestWorstPeriodsCard";
@@ -189,6 +190,8 @@ const Analysis = () => {
           <DrawdownChart data={data} />
 
           <RollingReturnsChart data={data} />
+
+          <ReturnsBoxPlot data={data} />
 
           <VolatilityChart data={data} />
 
