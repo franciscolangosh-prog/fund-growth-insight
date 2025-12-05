@@ -1,7 +1,21 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PortfolioData } from '@/utils/portfolioAnalysis';
+
+const BENCHMARK_INDICES = [
+  { key: 'none', label: 'None' },
+  { key: 'csi300', label: 'CSI 300' },
+  { key: 'sp500', label: 'S&P 500' },
+  { key: 'nasdaq', label: 'NASDAQ' },
+  { key: 'ftse100', label: 'FTSE 100' },
+  { key: 'hangseng', label: 'Hang Seng' },
+  { key: 'sha', label: 'Shanghai A' },
+  { key: 'she', label: 'Shenzhen A' },
+] as const;
+
+type BenchmarkKey = typeof BENCHMARK_INDICES[number]['key'];
 
 interface MonthlyReturnsHeatmapProps {
   data: PortfolioData[];
@@ -24,8 +38,9 @@ const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
 
 export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
   const [viewMode, setViewMode] = useState<'monthly' | 'quarterly'>('monthly');
+  const [selectedBenchmark, setSelectedBenchmark] = useState<BenchmarkKey>('none');
 
-  const { heatmapData, years, monthlyStats, yearlyReturns } = useMemo(() => {
+  const { heatmapData, years, monthlyStats, yearlyReturns, monthlyAvgRow, annualAvg } = useMemo(() => {
     if (data.length < 2) {
       return { heatmapData: new Map(), years: [], monthlyStats: [], yearlyReturns: new Map() };
     }
@@ -91,11 +106,25 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
       return { month: MONTHS[monthIdx], avg, winRate, count: monthReturns.length };
     });
 
-    return { heatmapData: heatmap, years: uniqueYears, monthlyStats: monthStats, yearlyReturns: annualReturns };
+    // Calculate overall monthly averages for the average row
+    const monthlyAvgRow = MONTHS.map((_, monthIdx) => {
+      const monthReturns = returns.filter(r => r.month === monthIdx);
+      return monthReturns.length > 0
+        ? monthReturns.reduce((sum, r) => sum + r.return, 0) / monthReturns.length
+        : undefined;
+    });
+
+    // Calculate overall annual average
+    const allAnnualReturns = Array.from(annualReturns.values());
+    const annualAvg = allAnnualReturns.length > 0
+      ? allAnnualReturns.reduce((sum, r) => sum + r, 0) / allAnnualReturns.length
+      : 0;
+
+    return { heatmapData: heatmap, years: uniqueYears, monthlyStats: monthStats, yearlyReturns: annualReturns, monthlyAvgRow, annualAvg };
   }, [data]);
 
   // Calculate quarterly data
-  const { quarterlyHeatmapData, quarterlyStats } = useMemo(() => {
+  const { quarterlyHeatmapData, quarterlyStats, quarterlyAvgRow } = useMemo(() => {
     if (data.length < 2) {
       return { quarterlyHeatmapData: new Map(), quarterlyStats: [] };
     }
@@ -141,7 +170,15 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
       return { quarter: QUARTERS[quarterIdx], avg, winRate, count: quarterReturns.length };
     });
 
-    return { quarterlyHeatmapData: qHeatmap, quarterlyStats: qStats };
+    // Calculate quarterly averages for the average row
+    const quarterlyAvgRow = QUARTERS.map((_, quarterIdx) => {
+      const quarterReturns = returns.filter(r => r.quarter === quarterIdx + 1);
+      return quarterReturns.length > 0
+        ? quarterReturns.reduce((sum, r) => sum + r.return, 0) / quarterReturns.length
+        : undefined;
+    });
+
+    return { quarterlyHeatmapData: qHeatmap, quarterlyStats: qStats, quarterlyAvgRow };
   }, [data]);
 
   const getColorForReturn = (returnValue: number | undefined) => {
@@ -173,6 +210,115 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
   const bestQuarter = allQuarterlyReturns[0];
   const worstQuarter = allQuarterlyReturns[allQuarterlyReturns.length - 1];
 
+  // Calculate benchmark data when a benchmark is selected
+  const { benchmarkMonthlyData, benchmarkQuarterlyData, benchmarkYearlyReturns, benchmarkMonthlyAvg, benchmarkQuarterlyAvg, benchmarkAnnualAvg } = useMemo(() => {
+    if (selectedBenchmark === 'none' || data.length < 2) {
+      return { benchmarkMonthlyData: new Map(), benchmarkQuarterlyData: new Map(), benchmarkYearlyReturns: new Map(), benchmarkMonthlyAvg: [], benchmarkQuarterlyAvg: [], benchmarkAnnualAvg: 0 };
+    }
+
+    const benchmarkKey = selectedBenchmark as keyof PortfolioData;
+    
+    // Group data by year-month for benchmark
+    const monthlyData = new Map<string, { first: number; last: number }>();
+    const quarterlyData = new Map<string, { first: number; last: number }>();
+    const yearlyData = new Map<number, { first: number; last: number }>();
+    
+    data.forEach(d => {
+      const date = new Date(d.date);
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const quarter = Math.floor(month / 3) + 1;
+      const benchmarkValue = d[benchmarkKey] as number;
+      
+      const monthKey = `${year}-${month}`;
+      const quarterKey = `${year}-${quarter}`;
+      
+      if (!monthlyData.has(monthKey)) {
+        monthlyData.set(monthKey, { first: benchmarkValue, last: benchmarkValue });
+      } else {
+        const existing = monthlyData.get(monthKey)!;
+        monthlyData.set(monthKey, { first: existing.first, last: benchmarkValue });
+      }
+      
+      if (!quarterlyData.has(quarterKey)) {
+        quarterlyData.set(quarterKey, { first: benchmarkValue, last: benchmarkValue });
+      } else {
+        const existing = quarterlyData.get(quarterKey)!;
+        quarterlyData.set(quarterKey, { first: existing.first, last: benchmarkValue });
+      }
+      
+      if (!yearlyData.has(year)) {
+        yearlyData.set(year, { first: benchmarkValue, last: benchmarkValue });
+      } else {
+        const existing = yearlyData.get(year)!;
+        yearlyData.set(year, { first: existing.first, last: benchmarkValue });
+      }
+    });
+
+    // Calculate benchmark monthly returns
+    const benchmarkMonthly = new Map<string, number>();
+    const monthReturnsArr: { month: number; return: number }[] = [];
+    monthlyData.forEach((value, key) => {
+      const ret = ((value.last - value.first) / value.first) * 100;
+      benchmarkMonthly.set(key, ret);
+      const month = parseInt(key.split('-')[1]);
+      monthReturnsArr.push({ month, return: ret });
+    });
+
+    // Calculate benchmark quarterly returns
+    const benchmarkQuarterly = new Map<string, number>();
+    const quarterReturnsArr: { quarter: number; return: number }[] = [];
+    quarterlyData.forEach((value, key) => {
+      const ret = ((value.last - value.first) / value.first) * 100;
+      benchmarkQuarterly.set(key, ret);
+      const quarter = parseInt(key.split('-')[1]);
+      quarterReturnsArr.push({ quarter, return: ret });
+    });
+
+    // Calculate benchmark yearly returns
+    const benchmarkYearly = new Map<number, number>();
+    yearlyData.forEach((value, year) => {
+      const ret = ((value.last - value.first) / value.first) * 100;
+      benchmarkYearly.set(year, ret);
+    });
+
+    // Calculate benchmark monthly averages
+    const benchmarkMonthAvg = MONTHS.map((_, monthIdx) => {
+      const monthReturns = monthReturnsArr.filter(r => r.month === monthIdx);
+      return monthReturns.length > 0
+        ? monthReturns.reduce((sum, r) => sum + r.return, 0) / monthReturns.length
+        : undefined;
+    });
+
+    // Calculate benchmark quarterly averages
+    const benchmarkQuarterAvg = QUARTERS.map((_, quarterIdx) => {
+      const quarterReturns = quarterReturnsArr.filter(r => r.quarter === quarterIdx + 1);
+      return quarterReturns.length > 0
+        ? quarterReturns.reduce((sum, r) => sum + r.return, 0) / quarterReturns.length
+        : undefined;
+    });
+
+    // Calculate benchmark annual average
+    const allBenchmarkAnnualReturns = Array.from(benchmarkYearly.values());
+    const benchmarkAnnAvg = allBenchmarkAnnualReturns.length > 0
+      ? allBenchmarkAnnualReturns.reduce((sum, r) => sum + r, 0) / allBenchmarkAnnualReturns.length
+      : 0;
+
+    return { 
+      benchmarkMonthlyData: benchmarkMonthly, 
+      benchmarkQuarterlyData: benchmarkQuarterly, 
+      benchmarkYearlyReturns: benchmarkYearly,
+      benchmarkMonthlyAvg: benchmarkMonthAvg,
+      benchmarkQuarterlyAvg: benchmarkQuarterAvg,
+      benchmarkAnnualAvg: benchmarkAnnAvg
+    };
+  }, [data, selectedBenchmark]);
+
+  const getBenchmarkLabel = () => {
+    const benchmark = BENCHMARK_INDICES.find(b => b.key === selectedBenchmark);
+    return benchmark?.label || '';
+  };
+
   return (
     <Card className="col-span-full">
       <CardHeader>
@@ -181,12 +327,29 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
             <CardTitle>Returns Heatmap</CardTitle>
             <CardDescription>Calendar view showing seasonal patterns and performance</CardDescription>
           </div>
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'monthly' | 'quarterly')}>
-            <TabsList>
-              <TabsTrigger value="monthly">Monthly</TabsTrigger>
-              <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Benchmark:</span>
+              <Select value={selectedBenchmark} onValueChange={(v) => setSelectedBenchmark(v as BenchmarkKey)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Select benchmark" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BENCHMARK_INDICES.map((index) => (
+                    <SelectItem key={index.key} value={index.key}>
+                      {index.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'monthly' | 'quarterly')}>
+              <TabsList>
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -240,28 +403,84 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
                 {years.map(year => {
                   // Use simple annual return (same as Annual Table)
                   const annualReturnPercent = yearlyReturns.get(year) ?? 0;
+                  const benchmarkAnnualReturn = benchmarkYearlyReturns.get(year);
 
                   return (
-                    <tr key={year} className="border-t">
-                      <td className="p-2 font-semibold">{year}</td>
-                      {MONTHS.map((_, monthIdx) => {
-                        const returnValue = heatmapData.get(`${year}-${monthIdx}`);
-                        return (
-                          <td 
-                            key={monthIdx} 
-                            className={`p-2 text-center text-xs font-medium rounded-sm ${getColorForReturn(returnValue)}`}
-                            title={returnValue !== undefined ? `${MONTHS[monthIdx]} ${year}: ${returnValue.toFixed(2)}%` : 'No data'}
-                          >
-                            {returnValue !== undefined ? `${returnValue.toFixed(1)}%` : '-'}
+                    <React.Fragment key={year}>
+                      <tr className="border-t">
+                        <td className="p-2 font-semibold" rowSpan={selectedBenchmark !== 'none' ? 2 : 1}>{year}</td>
+                        {MONTHS.map((_, monthIdx) => {
+                          const returnValue = heatmapData.get(`${year}-${monthIdx}`);
+                          return (
+                            <td 
+                              key={monthIdx} 
+                              className={`p-2 text-center text-xs font-medium rounded-sm ${getColorForReturn(returnValue)}`}
+                              title={returnValue !== undefined ? `${MONTHS[monthIdx]} ${year}: ${returnValue.toFixed(2)}%` : 'No data'}
+                            >
+                              {returnValue !== undefined ? `${returnValue.toFixed(1)}%` : '-'}
+                            </td>
+                          );
+                        })}
+                        <td className={`p-2 text-center text-xs font-bold ${annualReturnPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {annualReturnPercent >= 0 ? '+' : ''}{annualReturnPercent.toFixed(1)}%
+                        </td>
+                      </tr>
+                      {selectedBenchmark !== 'none' && (
+                        <tr className="bg-blue-50/50 dark:bg-blue-950/20">
+                          {MONTHS.map((_, monthIdx) => {
+                            const benchmarkValue = benchmarkMonthlyData.get(`${year}-${monthIdx}`);
+                            return (
+                              <td 
+                                key={monthIdx} 
+                                className={`p-1 text-center text-xs font-medium rounded-sm ${getColorForReturn(benchmarkValue)}`}
+                                title={benchmarkValue !== undefined ? `${MONTHS[monthIdx]} ${year} ${getBenchmarkLabel()}: ${benchmarkValue.toFixed(2)}%` : 'No data'}
+                              >
+                                {benchmarkValue !== undefined ? `${benchmarkValue.toFixed(1)}%` : '-'}
+                              </td>
+                            );
+                          })}
+                          <td className={`p-1 text-center text-xs font-bold ${(benchmarkAnnualReturn ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {benchmarkAnnualReturn !== undefined ? `${benchmarkAnnualReturn >= 0 ? '+' : ''}${benchmarkAnnualReturn.toFixed(1)}%` : '-'}
                           </td>
-                        );
-                      })}
-                      <td className={`p-2 text-center text-xs font-bold ${annualReturnPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {annualReturnPercent >= 0 ? '+' : ''}{annualReturnPercent.toFixed(1)}%
-                      </td>
-                    </tr>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
+                {/* Average Row */}
+                <tr className="border-t-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
+                  <td className="p-2 font-semibold text-muted-foreground">Average</td>
+                  {monthlyAvgRow?.map((avgValue, monthIdx) => (
+                    <td 
+                      key={monthIdx} 
+                      className={`p-2 text-center text-xs font-medium rounded-sm ${getColorForReturn(avgValue)}`}
+                      title={avgValue !== undefined ? `${MONTHS[monthIdx]} Avg: ${avgValue.toFixed(2)}%` : 'No data'}
+                    >
+                      {avgValue !== undefined ? `${avgValue.toFixed(1)}%` : '-'}
+                    </td>
+                  ))}
+                  <td className={`p-2 text-center text-xs font-bold ${annualAvg >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {annualAvg >= 0 ? '+' : ''}{annualAvg.toFixed(1)}%
+                  </td>
+                </tr>
+                {/* Benchmark Row */}
+                {selectedBenchmark !== 'none' && (
+                  <tr className="border-t bg-blue-50 dark:bg-blue-950/30">
+                    <td className="p-2 font-semibold text-blue-600 dark:text-blue-400">{getBenchmarkLabel()}</td>
+                    {benchmarkMonthlyAvg.map((avgValue, monthIdx) => (
+                      <td 
+                        key={monthIdx} 
+                        className={`p-2 text-center text-xs font-medium rounded-sm ${getColorForReturn(avgValue)}`}
+                        title={avgValue !== undefined ? `${MONTHS[monthIdx]} ${getBenchmarkLabel()} Avg: ${avgValue.toFixed(2)}%` : 'No data'}
+                      >
+                        {avgValue !== undefined ? `${avgValue.toFixed(1)}%` : '-'}
+                      </td>
+                    ))}
+                    <td className={`p-2 text-center text-xs font-bold ${benchmarkAnnualAvg >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {benchmarkAnnualAvg >= 0 ? '+' : ''}{benchmarkAnnualAvg.toFixed(1)}%
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -284,28 +503,84 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
                 {years.map(year => {
                   // Use simple annual return (same as Annual Table)
                   const annualReturnPercent = yearlyReturns.get(year) ?? 0;
+                  const benchmarkAnnualReturn = benchmarkYearlyReturns.get(year);
 
                   return (
-                    <tr key={year} className="border-t">
-                      <td className="p-2 font-semibold">{year}</td>
-                      {QUARTERS.map((quarter, quarterIdx) => {
-                        const returnValue = quarterlyHeatmapData.get(`${year}-${quarterIdx + 1}`);
-                        return (
-                          <td 
-                            key={quarterIdx} 
-                            className={`p-2 text-center text-sm font-medium rounded-sm ${getColorForReturn(returnValue)}`}
-                            title={returnValue !== undefined ? `${quarter} ${year}: ${returnValue.toFixed(2)}%` : 'No data'}
-                          >
-                            {returnValue !== undefined ? `${returnValue.toFixed(1)}%` : '-'}
+                    <React.Fragment key={year}>
+                      <tr className="border-t">
+                        <td className="p-2 font-semibold" rowSpan={selectedBenchmark !== 'none' ? 2 : 1}>{year}</td>
+                        {QUARTERS.map((quarter, quarterIdx) => {
+                          const returnValue = quarterlyHeatmapData.get(`${year}-${quarterIdx + 1}`);
+                          return (
+                            <td 
+                              key={quarterIdx} 
+                              className={`p-2 text-center text-sm font-medium rounded-sm ${getColorForReturn(returnValue)}`}
+                              title={returnValue !== undefined ? `${quarter} ${year}: ${returnValue.toFixed(2)}%` : 'No data'}
+                            >
+                              {returnValue !== undefined ? `${returnValue.toFixed(1)}%` : '-'}
+                            </td>
+                          );
+                        })}
+                        <td className={`p-2 text-center text-sm font-bold ${annualReturnPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {annualReturnPercent >= 0 ? '+' : ''}{annualReturnPercent.toFixed(1)}%
+                        </td>
+                      </tr>
+                      {selectedBenchmark !== 'none' && (
+                        <tr className="bg-blue-50/50 dark:bg-blue-950/20">
+                          {QUARTERS.map((quarter, quarterIdx) => {
+                            const benchmarkValue = benchmarkQuarterlyData.get(`${year}-${quarterIdx + 1}`);
+                            return (
+                              <td 
+                                key={quarterIdx} 
+                                className={`p-1 text-center text-sm font-medium rounded-sm ${getColorForReturn(benchmarkValue)}`}
+                                title={benchmarkValue !== undefined ? `${quarter} ${year} ${getBenchmarkLabel()}: ${benchmarkValue.toFixed(2)}%` : 'No data'}
+                              >
+                                {benchmarkValue !== undefined ? `${benchmarkValue.toFixed(1)}%` : '-'}
+                              </td>
+                            );
+                          })}
+                          <td className={`p-1 text-center text-sm font-bold ${(benchmarkAnnualReturn ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {benchmarkAnnualReturn !== undefined ? `${benchmarkAnnualReturn >= 0 ? '+' : ''}${benchmarkAnnualReturn.toFixed(1)}%` : '-'}
                           </td>
-                        );
-                      })}
-                      <td className={`p-2 text-center text-sm font-bold ${annualReturnPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {annualReturnPercent >= 0 ? '+' : ''}{annualReturnPercent.toFixed(1)}%
-                      </td>
-                    </tr>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
+                {/* Average Row */}
+                <tr className="border-t-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
+                  <td className="p-2 font-semibold text-muted-foreground">Average</td>
+                  {quarterlyAvgRow?.map((avgValue, quarterIdx) => (
+                    <td 
+                      key={quarterIdx} 
+                      className={`p-2 text-center text-sm font-medium rounded-sm ${getColorForReturn(avgValue)}`}
+                      title={avgValue !== undefined ? `${QUARTERS[quarterIdx]} Avg: ${avgValue.toFixed(2)}%` : 'No data'}
+                    >
+                      {avgValue !== undefined ? `${avgValue.toFixed(1)}%` : '-'}
+                    </td>
+                  ))}
+                  <td className={`p-2 text-center text-sm font-bold ${annualAvg >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {annualAvg >= 0 ? '+' : ''}{annualAvg.toFixed(1)}%
+                  </td>
+                </tr>
+                {/* Benchmark Row */}
+                {selectedBenchmark !== 'none' && (
+                  <tr className="border-t bg-blue-50 dark:bg-blue-950/30">
+                    <td className="p-2 font-semibold text-blue-600 dark:text-blue-400">{getBenchmarkLabel()}</td>
+                    {benchmarkQuarterlyAvg.map((avgValue, quarterIdx) => (
+                      <td 
+                        key={quarterIdx} 
+                        className={`p-2 text-center text-sm font-medium rounded-sm ${getColorForReturn(avgValue)}`}
+                        title={avgValue !== undefined ? `${QUARTERS[quarterIdx]} ${getBenchmarkLabel()} Avg: ${avgValue.toFixed(2)}%` : 'No data'}
+                      >
+                        {avgValue !== undefined ? `${avgValue.toFixed(1)}%` : '-'}
+                      </td>
+                    ))}
+                    <td className={`p-2 text-center text-sm font-bold ${benchmarkAnnualAvg >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {benchmarkAnnualAvg >= 0 ? '+' : ''}{benchmarkAnnualAvg.toFixed(1)}%
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -424,6 +699,104 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
             })()
           )}
         </div>
+
+        {/* Benchmark Comparison Insights */}
+        {selectedBenchmark !== 'none' && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg text-sm space-y-2">
+            <strong className="text-blue-700 dark:text-blue-300">
+              📊 Benchmark Comparison vs {getBenchmarkLabel()}:
+            </strong>
+            {viewMode === 'monthly' ? (
+              (() => {
+                const outperformMonths = MONTHS.filter((_, idx) => {
+                  const portfolioAvg = monthlyAvgRow?.[idx];
+                  const benchmarkAvg = benchmarkMonthlyAvg[idx];
+                  return portfolioAvg !== undefined && benchmarkAvg !== undefined && portfolioAvg > benchmarkAvg;
+                });
+                const underperformMonths = MONTHS.filter((_, idx) => {
+                  const portfolioAvg = monthlyAvgRow?.[idx];
+                  const benchmarkAvg = benchmarkMonthlyAvg[idx];
+                  return portfolioAvg !== undefined && benchmarkAvg !== undefined && portfolioAvg < benchmarkAvg;
+                });
+                const excessReturn = annualAvg - benchmarkAnnualAvg;
+                const bestOutperformMonth = MONTHS.map((month, idx) => ({
+                  month,
+                  diff: (monthlyAvgRow?.[idx] ?? 0) - (benchmarkMonthlyAvg[idx] ?? 0)
+                })).sort((a, b) => b.diff - a.diff)[0];
+                const worstUnderperformMonth = MONTHS.map((month, idx) => ({
+                  month,
+                  diff: (monthlyAvgRow?.[idx] ?? 0) - (benchmarkMonthlyAvg[idx] ?? 0)
+                })).sort((a, b) => a.diff - b.diff)[0];
+
+                return (
+                  <div className="space-y-2 text-muted-foreground">
+                    <p>
+                      <span className={`font-semibold ${excessReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        Overall: {excessReturn >= 0 ? 'Outperforms' : 'Underperforms'} by {Math.abs(excessReturn).toFixed(2)}% annually
+                      </span>
+                    </p>
+                    <p>
+                      <span className="text-green-600 font-medium">Outperforms in {outperformMonths.length} months:</span>{' '}
+                      {outperformMonths.length > 0 ? outperformMonths.join(', ') : 'None'}
+                    </p>
+                    <p>
+                      <span className="text-red-600 font-medium">Underperforms in {underperformMonths.length} months:</span>{' '}
+                      {underperformMonths.length > 0 ? underperformMonths.join(', ') : 'None'}
+                    </p>
+                    <p>
+                      Best relative month: <span className="font-semibold">{bestOutperformMonth.month}</span> ({bestOutperformMonth.diff >= 0 ? '+' : ''}{bestOutperformMonth.diff.toFixed(2)}% vs benchmark).
+                      Worst relative month: <span className="font-semibold">{worstUnderperformMonth.month}</span> ({worstUnderperformMonth.diff >= 0 ? '+' : ''}{worstUnderperformMonth.diff.toFixed(2)}% vs benchmark).
+                    </p>
+                  </div>
+                );
+              })()
+            ) : (
+              (() => {
+                const outperformQuarters = QUARTERS.filter((_, idx) => {
+                  const portfolioAvg = quarterlyAvgRow?.[idx];
+                  const benchmarkAvg = benchmarkQuarterlyAvg[idx];
+                  return portfolioAvg !== undefined && benchmarkAvg !== undefined && portfolioAvg > benchmarkAvg;
+                });
+                const underperformQuarters = QUARTERS.filter((_, idx) => {
+                  const portfolioAvg = quarterlyAvgRow?.[idx];
+                  const benchmarkAvg = benchmarkQuarterlyAvg[idx];
+                  return portfolioAvg !== undefined && benchmarkAvg !== undefined && portfolioAvg < benchmarkAvg;
+                });
+                const excessReturn = annualAvg - benchmarkAnnualAvg;
+                const bestOutperformQuarter = QUARTERS.map((quarter, idx) => ({
+                  quarter,
+                  diff: (quarterlyAvgRow?.[idx] ?? 0) - (benchmarkQuarterlyAvg[idx] ?? 0)
+                })).sort((a, b) => b.diff - a.diff)[0];
+                const worstUnderperformQuarter = QUARTERS.map((quarter, idx) => ({
+                  quarter,
+                  diff: (quarterlyAvgRow?.[idx] ?? 0) - (benchmarkQuarterlyAvg[idx] ?? 0)
+                })).sort((a, b) => a.diff - b.diff)[0];
+
+                return (
+                  <div className="space-y-2 text-muted-foreground">
+                    <p>
+                      <span className={`font-semibold ${excessReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        Overall: {excessReturn >= 0 ? 'Outperforms' : 'Underperforms'} by {Math.abs(excessReturn).toFixed(2)}% annually
+                      </span>
+                    </p>
+                    <p>
+                      <span className="text-green-600 font-medium">Outperforms in {outperformQuarters.length} quarters:</span>{' '}
+                      {outperformQuarters.length > 0 ? outperformQuarters.join(', ') : 'None'}
+                    </p>
+                    <p>
+                      <span className="text-red-600 font-medium">Underperforms in {underperformQuarters.length} quarters:</span>{' '}
+                      {underperformQuarters.length > 0 ? underperformQuarters.join(', ') : 'None'}
+                    </p>
+                    <p>
+                      Best relative quarter: <span className="font-semibold">{bestOutperformQuarter.quarter}</span> ({bestOutperformQuarter.diff >= 0 ? '+' : ''}{bestOutperformQuarter.diff.toFixed(2)}% vs benchmark).
+                      Worst relative quarter: <span className="font-semibold">{worstUnderperformQuarter.quarter}</span> ({worstUnderperformQuarter.diff >= 0 ? '+' : ''}{worstUnderperformQuarter.diff.toFixed(2)}% vs benchmark).
+                    </p>
+                  </div>
+                );
+              })()
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
