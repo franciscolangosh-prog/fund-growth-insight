@@ -38,6 +38,7 @@ import {
 import {
   fetchAllMarketData,
   calculateRollingReturns,
+  calculateRollingReturnsBoxPlot,
   simulateDCA,
   calculateMissingDaysImpact,
   analyzeWorstEntryPoints,
@@ -45,6 +46,7 @@ import {
   calculateYearlyReturns,
   MarketDataPoint,
   RollingReturnStats,
+  BoxPlotStats,
 } from "@/utils/marketInsightsAnalysis";
 
 const INDEX_OPTIONS = [
@@ -74,6 +76,10 @@ const MarketInsights = () => {
   const summaryStats = useMemo(() => getMarketSummaryStats(data), [data]);
   const rollingReturns = useMemo(
     () => calculateRollingReturns(data, selectedIndex as keyof Omit<MarketDataPoint, 'date'>),
+    [data, selectedIndex]
+  );
+  const boxPlotStats = useMemo(
+    () => calculateRollingReturnsBoxPlot(data, selectedIndex as keyof Omit<MarketDataPoint, 'date'>),
     [data, selectedIndex]
   );
   const dcaSimulation = useMemo(
@@ -304,8 +310,8 @@ const MarketInsights = () => {
                             <td className="text-right py-3 px-4 text-green-600">
                               +{stat.maxReturn.toFixed(2)}%
                             </td>
-                            <td className="text-right py-3 px-4 text-red-600">
-                              {stat.minReturn.toFixed(2)}%
+                            <td className={`text-right py-3 px-4 ${stat.minReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {stat.minReturn >= 0 ? '+' : ''}{stat.minReturn.toFixed(2)}%
                             </td>
                             <td className="text-right py-3 px-4 text-muted-foreground">
                               {stat.count.toLocaleString()}
@@ -324,6 +330,180 @@ const MarketInsights = () => {
                         ? `Historically, holding ${selectedIndexConfig?.label} for 10 years resulted in positive returns ${rollingReturns.find(r => r.years === 10)?.positivePercentage.toFixed(0)}% of the time.`
                         : 'Longer holding periods significantly increase your probability of positive returns.'}
                       {' '}Patience is the investor's greatest asset.
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+
+              {/* Box Plot Distribution Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-purple-500" />
+                    Return Distribution by Holding Period
+                  </CardTitle>
+                  <CardDescription>
+                    Box plot showing the spread of annualized returns for different holding periods. 
+                    Notice how the range narrows as holding period increases.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Custom Box Plot Visualization */}
+                  <div className="space-y-4">
+                    {boxPlotStats.map((stat) => {
+                      // Calculate scale - find global min/max for consistent scaling
+                      const globalMin = Math.min(...boxPlotStats.map(s => s.min));
+                      const globalMax = Math.max(...boxPlotStats.map(s => s.max));
+                      const range = globalMax - globalMin;
+                      const scale = (value: number) => ((value - globalMin) / range) * 100;
+                      
+                      return (
+                        <div key={stat.period} className="flex items-center gap-4">
+                          <div className="w-20 text-sm font-medium text-right shrink-0">
+                            {stat.period}
+                          </div>
+                          <div className="flex-1 relative h-12">
+                            {/* Background scale */}
+                            <div className="absolute inset-0 flex items-center">
+                              <div className="w-full h-[2px] bg-gray-200 dark:bg-gray-700" />
+                            </div>
+                            
+                            {/* Zero line */}
+                            {globalMin < 0 && globalMax > 0 && (
+                              <div 
+                                className="absolute top-0 bottom-0 w-[2px] bg-gray-400 dark:bg-gray-500"
+                                style={{ left: `${scale(0)}%` }}
+                              />
+                            )}
+                            
+                            {/* Whisker line (min to max within 1.5 IQR) */}
+                            <div 
+                              className="absolute top-1/2 h-[2px] bg-gray-400 dark:bg-gray-500 -translate-y-1/2"
+                              style={{ 
+                                left: `${scale(stat.lowerWhisker)}%`,
+                                width: `${scale(stat.upperWhisker) - scale(stat.lowerWhisker)}%`
+                              }}
+                            />
+                            
+                            {/* Lower whisker cap */}
+                            <div 
+                              className="absolute top-1/2 w-[2px] h-3 bg-gray-400 dark:bg-gray-500 -translate-y-1/2"
+                              style={{ left: `${scale(stat.lowerWhisker)}%` }}
+                            />
+                            
+                            {/* Upper whisker cap */}
+                            <div 
+                              className="absolute top-1/2 w-[2px] h-3 bg-gray-400 dark:bg-gray-500 -translate-y-1/2"
+                              style={{ left: `${scale(stat.upperWhisker)}%` }}
+                            />
+                            
+                            {/* Box (Q1 to Q3) */}
+                            <div 
+                              className="absolute top-1/2 h-8 -translate-y-1/2 rounded border-2 border-primary"
+                              style={{ 
+                                left: `${scale(stat.q1)}%`,
+                                width: `${Math.max(scale(stat.q3) - scale(stat.q1), 1)}%`,
+                                backgroundColor: stat.median >= 0 
+                                  ? 'rgba(34, 197, 94, 0.3)' 
+                                  : 'rgba(239, 68, 68, 0.3)'
+                              }}
+                            />
+                            
+                            {/* Median line */}
+                            <div 
+                              className="absolute top-1/2 w-[3px] h-8 bg-primary -translate-y-1/2"
+                              style={{ left: `${scale(stat.median)}%` }}
+                            />
+                            
+                            {/* Outliers */}
+                            {stat.outliers.slice(0, 10).map((outlier, i) => (
+                              <div 
+                                key={i}
+                                className="absolute top-1/2 w-2 h-2 rounded-full bg-orange-500 -translate-y-1/2 -translate-x-1/2"
+                                style={{ left: `${scale(outlier)}%` }}
+                              />
+                            ))}
+                          </div>
+                          <div className="w-32 text-xs text-muted-foreground shrink-0">
+                            <span className={stat.median >= 0 ? 'text-green-600' : 'text-red-600'}>
+                              Median: {stat.median.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Legend */}
+                  <div className="flex flex-wrap gap-4 text-xs text-muted-foreground border-t pt-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded border-2 border-primary bg-green-500/30" />
+                      <span>IQR (25th-75th percentile)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-[3px] bg-primary" />
+                      <span>Median</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-[2px] bg-gray-400" />
+                      <span>Whiskers (1.5× IQR)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-orange-500" />
+                      <span>Outliers</span>
+                    </div>
+                  </div>
+
+                  {/* Detailed Stats Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4">Period</th>
+                          <th className="text-right py-3 px-4">Min</th>
+                          <th className="text-right py-3 px-4">Q1 (25%)</th>
+                          <th className="text-right py-3 px-4">Median</th>
+                          <th className="text-right py-3 px-4">Q3 (75%)</th>
+                          <th className="text-right py-3 px-4">Max</th>
+                          <th className="text-right py-3 px-4">IQR</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {boxPlotStats.map((stat) => (
+                          <tr key={stat.period} className="border-b hover:bg-muted/50">
+                            <td className="py-3 px-4 font-medium">{stat.period}</td>
+                            <td className={`text-right py-3 px-4 ${stat.min >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {stat.min >= 0 ? '+' : ''}{stat.min.toFixed(2)}%
+                            </td>
+                            <td className="text-right py-3 px-4">
+                              {stat.q1.toFixed(2)}%
+                            </td>
+                            <td className={`text-right py-3 px-4 font-medium ${stat.median >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {stat.median.toFixed(2)}%
+                            </td>
+                            <td className="text-right py-3 px-4">
+                              {stat.q3.toFixed(2)}%
+                            </td>
+                            <td className="text-right py-3 px-4 text-green-600">
+                              {stat.max.toFixed(2)}%
+                            </td>
+                            <td className="text-right py-3 px-4 text-muted-foreground">
+                              {(stat.q3 - stat.q1).toFixed(2)}%
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <Alert className="bg-purple-50 dark:bg-purple-950 border-purple-200">
+                    <Info className="h-4 w-4 text-purple-600" />
+                    <AlertTitle>Understanding the Box Plot</AlertTitle>
+                    <AlertDescription>
+                      The box shows where 50% of all returns fall (between Q1 and Q3). 
+                      Notice how the IQR (Interquartile Range) shrinks dramatically as holding period increases — 
+                      from {(boxPlotStats[0]?.q3 - boxPlotStats[0]?.q1).toFixed(1)}% for 1-year to {(boxPlotStats[boxPlotStats.length - 1]?.q3 - boxPlotStats[boxPlotStats.length - 1]?.q1).toFixed(1)}% for {boxPlotStats[boxPlotStats.length - 1]?.period}. 
+                      This "narrowing" effect demonstrates how time reduces volatility and uncertainty.
                     </AlertDescription>
                   </Alert>
                 </CardContent>
@@ -364,10 +544,13 @@ const MarketInsights = () => {
                         {dcaSimulation.totalReturn >= 0 ? '+' : ''}{dcaSimulation.totalReturn.toFixed(1)}%
                       </p>
                     </div>
-                    <div className="bg-orange-50 dark:bg-orange-950 rounded-lg p-4">
-                      <p className="text-sm text-muted-foreground">Annualized Return</p>
-                      <p className="text-2xl font-bold text-orange-600">
-                        {dcaSimulation.annualizedReturn.toFixed(2)}%
+                    <div className="bg-cyan-50 dark:bg-cyan-950 rounded-lg p-4">
+                      <p className="text-sm text-muted-foreground">Annualized Return (CAGR)</p>
+                      <p className={`text-2xl font-bold ${dcaSimulation.annualizedReturn >= 0 ? 'text-cyan-600' : 'text-red-600'}`}>
+                        {dcaSimulation.annualizedReturn >= 0 ? '+' : ''}{dcaSimulation.annualizedReturn.toFixed(2)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        (Compound growth on invested capital)
                       </p>
                     </div>
                   </div>
@@ -678,7 +861,7 @@ const MarketInsights = () => {
                   </div>
 
                   {/* Stats Summary */}
-                  <div className="grid gap-4 md:grid-cols-3">
+                  <div className="grid gap-4 md:grid-cols-4">
                     <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4">
                       <p className="text-sm text-muted-foreground">Positive Years</p>
                       <p className="text-2xl font-bold text-green-600">
@@ -702,8 +885,31 @@ const MarketInsights = () => {
                       <p className="text-2xl font-bold text-blue-600">
                         {(yearlyReturns.reduce((sum, y) => sum + (y[selectedIndex as keyof typeof y] as number), 0) / yearlyReturns.length).toFixed(2)}%
                       </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        (Arithmetic mean of yearly returns)
+                      </p>
+                    </div>
+                    <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4">
+                      <p className="text-sm text-muted-foreground">Compound Annual Growth (CAGR)</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {summaryStats.indices.find(i => i.key === selectedIndex)?.annualizedReturn.toFixed(2)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        (Actual growth rate if compounded)
+                      </p>
                     </div>
                   </div>
+
+                  <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 mb-4">
+                    <Info className="h-4 w-4 text-amber-600" />
+                    <AlertTitle>Why Average Return Differs from CAGR</AlertTitle>
+                    <AlertDescription>
+                      <strong>Average Annual Return ({(yearlyReturns.reduce((sum, y) => sum + (y[selectedIndex as keyof typeof y] as number), 0) / yearlyReturns.length).toFixed(2)}%)</strong> is the simple arithmetic mean of yearly returns. 
+                      <strong>CAGR ({summaryStats.indices.find(i => i.key === selectedIndex)?.annualizedReturn.toFixed(2)}%)</strong> is the actual compound growth rate. 
+                      The gap exists because of "volatility drag" — when returns fluctuate, compounding produces lower results than the arithmetic average suggests. 
+                      For example: +50% then -50% gives an average of 0%, but actual result is -25%.
+                    </AlertDescription>
+                  </Alert>
 
                   <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200">
                     <Lightbulb className="h-4 w-4 text-blue-600" />

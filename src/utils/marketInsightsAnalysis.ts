@@ -22,6 +22,22 @@ export interface RollingReturnStats {
   count: number;
 }
 
+export interface BoxPlotStats {
+  period: string;
+  years: number;
+  min: number;
+  q1: number;
+  median: number;
+  q3: number;
+  max: number;
+  // Whiskers (1.5 IQR rule)
+  lowerWhisker: number;
+  upperWhisker: number;
+  // Outliers
+  outliers: number[];
+  count: number;
+}
+
 export interface DCASimulationResult {
   totalInvested: number;
   finalValue: number;
@@ -150,6 +166,95 @@ export function calculateRollingReturns(
       maxReturn: sorted[sorted.length - 1],
       medianReturn: sorted[Math.floor(sorted.length / 2)],
       count: returns.length,
+    };
+  });
+}
+
+/**
+ * Calculate box plot statistics for rolling returns across different holding periods
+ * Returns quartiles, whiskers, and outliers for visualization
+ */
+export function calculateRollingReturnsBoxPlot(
+  data: MarketDataPoint[],
+  indexKey: keyof Omit<MarketDataPoint, 'date'>
+): BoxPlotStats[] {
+  const periods = [
+    { label: '1 Year', years: 1 },
+    { label: '3 Years', years: 3 },
+    { label: '5 Years', years: 5 },
+    { label: '8 Years', years: 8 },
+    { label: '10 Years', years: 10 },
+    { label: '15 Years', years: 15 },
+    { label: '20 Years', years: 20 },
+  ];
+
+  return periods.map(({ label, years }) => {
+    const tradingDaysPerYear = 252;
+    const lookbackDays = years * tradingDaysPerYear;
+    const returns: number[] = [];
+
+    for (let i = lookbackDays; i < data.length; i++) {
+      const startValue = data[i - lookbackDays][indexKey] as number;
+      const endValue = data[i][indexKey] as number;
+      
+      if (startValue > 0 && endValue > 0) {
+        const annualizedReturn = (Math.pow(endValue / startValue, 1 / years) - 1) * 100;
+        returns.push(annualizedReturn);
+      }
+    }
+
+    if (returns.length === 0) {
+      return {
+        period: label,
+        years,
+        min: 0,
+        q1: 0,
+        median: 0,
+        q3: 0,
+        max: 0,
+        lowerWhisker: 0,
+        upperWhisker: 0,
+        outliers: [],
+        count: 0,
+      };
+    }
+
+    const sorted = [...returns].sort((a, b) => a - b);
+    const n = sorted.length;
+    
+    // Calculate quartiles
+    const q1Index = Math.floor(n * 0.25);
+    const medianIndex = Math.floor(n * 0.5);
+    const q3Index = Math.floor(n * 0.75);
+    
+    const q1 = sorted[q1Index];
+    const median = sorted[medianIndex];
+    const q3 = sorted[q3Index];
+    const iqr = q3 - q1;
+    
+    // Calculate whiskers (1.5 IQR rule)
+    const lowerBound = q1 - 1.5 * iqr;
+    const upperBound = q3 + 1.5 * iqr;
+    
+    // Find actual whisker values (closest data points within bounds)
+    const lowerWhisker = sorted.find(v => v >= lowerBound) ?? sorted[0];
+    const upperWhisker = [...sorted].reverse().find(v => v <= upperBound) ?? sorted[n - 1];
+    
+    // Identify outliers
+    const outliers = sorted.filter(v => v < lowerBound || v > upperBound);
+
+    return {
+      period: label,
+      years,
+      min: sorted[0],
+      q1,
+      median,
+      q3,
+      max: sorted[n - 1],
+      lowerWhisker,
+      upperWhisker,
+      outliers,
+      count: n,
     };
   });
 }
