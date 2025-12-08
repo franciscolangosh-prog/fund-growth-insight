@@ -88,7 +88,7 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
     
     // Convert to share value format
     const converted = convertToShareValue(userInputs);
-    const newRecord = converted.find(r => r.date === dateStr);
+    const newRecord = converted.data.find(r => r.date === dateStr);
     
     if (!newRecord) {
       toast.error("Failed to calculate share value");
