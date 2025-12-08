@@ -208,6 +208,17 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
     setVisibleIndices(new Set(['Fund'])); // Keep Fund visible
   };
 
+  // Find the first valid base value for each index (where value > 0)
+  const findFirstValidBase = (key: keyof PortfolioData) => {
+    const found = data.find(row => Number(row[key]) > 0);
+    return found ? Number(found[key]) : 0;
+  };
+
+  const baseSP500 = findFirstValidBase('sp500');
+  const baseNasdaq = findFirstValidBase('nasdaq');
+  const baseFTSE100 = findFirstValidBase('ftse100');
+  const baseHangSeng = findFirstValidBase('hangseng');
+
   const chartData = data
     .filter((_, index) => index % 30 === 0 || index === data.length - 1)
     .map(row => {
@@ -220,10 +231,10 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
         SHA: Number(((row.sha / base.sha - 1) * 100).toFixed(2)),
         SHE: Number(((row.she / base.she - 1) * 100).toFixed(2)),
         CSI300: Number(((row.csi300 / base.csi300 - 1) * 100).toFixed(2)),
-        SP500: base.sp500 > 0 ? Number(((row.sp500 / base.sp500 - 1) * 100).toFixed(2)) : 0,
-        Nasdaq: base.nasdaq > 0 ? Number(((row.nasdaq / base.nasdaq - 1) * 100).toFixed(2)) : 0,
-        FTSE100: base.ftse100 > 0 ? Number(((row.ftse100 / base.ftse100 - 1) * 100).toFixed(2)) : 0,
-        HangSeng: base.hangseng > 0 ? Number(((row.hangseng / base.hangseng - 1) * 100).toFixed(2)) : 0,
+        SP500: baseSP500 > 0 && row.sp500 > 0 ? Number(((row.sp500 / baseSP500 - 1) * 100).toFixed(2)) : null,
+        Nasdaq: baseNasdaq > 0 && row.nasdaq > 0 ? Number(((row.nasdaq / baseNasdaq - 1) * 100).toFixed(2)) : null,
+        FTSE100: baseFTSE100 > 0 && row.ftse100 > 0 ? Number(((row.ftse100 / baseFTSE100 - 1) * 100).toFixed(2)) : null,
+        HangSeng: baseHangSeng > 0 && row.hangseng > 0 ? Number(((row.hangseng / baseHangSeng - 1) * 100).toFixed(2)) : null,
         // Actual values for tooltip
         actualFund: row.shareValue,
         actualSHA: row.sha,
@@ -343,6 +354,7 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
                   strokeWidth={config.strokeWidth} 
                   dot={false} 
                   name={config.name}
+                  connectNulls={false}
                 />
               )
             ))}

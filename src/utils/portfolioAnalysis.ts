@@ -188,39 +188,14 @@ export function parseCSV(csvText: string): ParseCSVResult {
   const header = lines[headerLineIndex].toLowerCase();
   
   // Detect format type
+  // Check isOldFullFormat FIRST since it's more specific (has SHA, SHE, CSI300 columns)
+  // The old format also contains 'market_value' column, so we must check for it first
   const isOldFullFormat = header.includes('sha') && header.includes('she') && header.includes('csi300');
   const isUserFriendlyFormat = header.includes('market_value') || header.includes('marketvalue') || header.includes('market value');
   
-  if (isUserFriendlyFormat) {
-    // Parse user-friendly format (date, principle, market_value)
-    // Note: principle can be 0 or negative for non-first rows (withdrawals exceeding total invested)
-    // Only market_value must always be positive
-    const userInput: UserPortfolioInput[] = [];
-
-    lines.slice(dataStartIndex).forEach(line => {
-      if (!line.trim()) return; // Skip empty lines
-      const values = line.split(',').map(v => v.trim());
-      
-      const formattedDate = parseDateToISO(values[0]);
-      const principle = parseFloat(values[1]);
-      const marketValue = parseFloat(values[2]);
-      
-      // Only skip rows with invalid/missing values (NaN)
-      // Allow principle to be any number (including 0 or negative)
-      // market_value validation will be done in convertToShareValue
-      if (!isNaN(principle) && !isNaN(marketValue)) {
-        userInput.push({
-          date: formattedDate,
-          principle,
-          marketValue,
-        });
-      }
-    });
-
-    const conversionResult = convertToShareValue(userInput);
-    return { data: conversionResult.data, errors: conversionResult.errors };
-  } else if (isOldFullFormat) {
+  if (isOldFullFormat) {
     // Parse old format (includes market indices)
+    // Header: Date,SHA,SHE,CSI300,Share,Share_V,Gain_Loss,DailyGain,Market_Value,Principle,SP500,Nasdaq,FTSE100,HangSeng
     const parsedData: PortfolioData[] = [];
     let lastValues = {
       sp500: 0,
@@ -269,6 +244,34 @@ export function parseCSV(csvText: string): ParseCSVResult {
     });
 
     return { data: parsedData, errors: [] };
+  } else if (isUserFriendlyFormat) {
+    // Parse user-friendly format (date, principle, market_value)
+    // Note: principle can be 0 or negative for non-first rows (withdrawals exceeding total invested)
+    // Only market_value must always be positive
+    const userInput: UserPortfolioInput[] = [];
+
+    lines.slice(dataStartIndex).forEach(line => {
+      if (!line.trim()) return; // Skip empty lines
+      const values = line.split(',').map(v => v.trim());
+      
+      const formattedDate = parseDateToISO(values[0]);
+      const principle = parseFloat(values[1]);
+      const marketValue = parseFloat(values[2]);
+      
+      // Only skip rows with invalid/missing values (NaN)
+      // Allow principle to be any number (including 0 or negative)
+      // market_value validation will be done in convertToShareValue
+      if (!isNaN(principle) && !isNaN(marketValue)) {
+        userInput.push({
+          date: formattedDate,
+          principle,
+          marketValue,
+        });
+      }
+    });
+
+    const conversionResult = convertToShareValue(userInput);
+    return { data: conversionResult.data, errors: conversionResult.errors };
   } else {
     // Parse old simplified format (date, shares, share_value, gain_loss, principle) - for backward compatibility
     const parsedData: SimplifiedPortfolioData[] = [];
@@ -363,30 +366,98 @@ export function calculateCorrelations(data: PortfolioData[]): CorrelationData {
 }
 
 export function calculateAnnualReturns(data: PortfolioData[]): AnnualReturn[] {
-  const yearlyData = new Map<number, { first: PortfolioData; last: PortfolioData }>();
+  const yearlyData = new Map<number, { firstIndex: number; lastIndex: number }>();
 
-  data.forEach(row => {
+  data.forEach((row, index) => {
     const year = new Date(row.date).getFullYear();
     if (!yearlyData.has(year)) {
-      yearlyData.set(year, { first: row, last: row });
+      yearlyData.set(year, { firstIndex: index, lastIndex: index });
     } else {
       const existing = yearlyData.get(year)!;
-      yearlyData.set(year, { first: existing.first, last: row });
+      yearlyData.set(year, { firstIndex: existing.firstIndex, lastIndex: index });
     }
   });
 
+  // Helper to find the closest valid value for an index field
+  // For start of year: search forward within year first, then backward to previous data
+  // For end of year: search backward within year first, then forward to next data
+  const findValidValueForStart = (
+    startIndex: number,
+    endIndex: number,
+    field: keyof PortfolioData
+  ): number => {
+    // First try the exact index
+    if (Number(data[startIndex][field]) > 0) {
+      return Number(data[startIndex][field]);
+    }
+    
+    // Search forward within the year range first
+    for (let i = startIndex + 1; i <= endIndex; i++) {
+      if (Number(data[i][field]) > 0) {
+        return Number(data[i][field]);
+      }
+    }
+    // Then search backward to find closest previous value
+    for (let i = startIndex - 1; i >= 0; i--) {
+      if (Number(data[i][field]) > 0) {
+        return Number(data[i][field]);
+      }
+    }
+    return 0;
+  };
+
+  const findValidValueForEnd = (
+    startIndex: number,
+    endIndex: number,
+    field: keyof PortfolioData
+  ): number => {
+    // First try the exact index
+    if (Number(data[endIndex][field]) > 0) {
+      return Number(data[endIndex][field]);
+    }
+    
+    // Search backward within the year range first
+    for (let i = endIndex - 1; i >= startIndex; i--) {
+      if (Number(data[i][field]) > 0) {
+        return Number(data[i][field]);
+      }
+    }
+    // Then search forward to find closest next value
+    for (let i = endIndex + 1; i < data.length; i++) {
+      if (Number(data[i][field]) > 0) {
+        return Number(data[i][field]);
+      }
+    }
+    return 0;
+  };
+
   return Array.from(yearlyData.entries())
-    .map(([year, { first, last }]) => ({
-      year,
-      fundReturn: ((last.shareValue - first.shareValue) / first.shareValue) * 100,
-      shaReturn: ((last.sha - first.sha) / first.sha) * 100,
-      sheReturn: ((last.she - first.she) / first.she) * 100,
-      csi300Return: ((last.csi300 - first.csi300) / first.csi300) * 100,
-      sp500Return: first.sp500 > 0 ? ((last.sp500 - first.sp500) / first.sp500) * 100 : 0,
-      nasdaqReturn: first.nasdaq > 0 ? ((last.nasdaq - first.nasdaq) / first.nasdaq) * 100 : 0,
-      ftse100Return: first.ftse100 > 0 ? ((last.ftse100 - first.ftse100) / first.ftse100) * 100 : 0,
-      hangsengReturn: first.hangseng > 0 ? ((last.hangseng - first.hangseng) / first.hangseng) * 100 : 0,
-    }))
+    .map(([year, { firstIndex, lastIndex }]) => {
+      const first = data[firstIndex];
+      const last = data[lastIndex];
+      
+      // For global indices, find valid start and end values
+      const sp500Start = findValidValueForStart(firstIndex, lastIndex, 'sp500');
+      const sp500End = findValidValueForEnd(firstIndex, lastIndex, 'sp500');
+      const nasdaqStart = findValidValueForStart(firstIndex, lastIndex, 'nasdaq');
+      const nasdaqEnd = findValidValueForEnd(firstIndex, lastIndex, 'nasdaq');
+      const ftse100Start = findValidValueForStart(firstIndex, lastIndex, 'ftse100');
+      const ftse100End = findValidValueForEnd(firstIndex, lastIndex, 'ftse100');
+      const hangsengStart = findValidValueForStart(firstIndex, lastIndex, 'hangseng');
+      const hangsengEnd = findValidValueForEnd(firstIndex, lastIndex, 'hangseng');
+
+      return {
+        year,
+        fundReturn: ((last.shareValue - first.shareValue) / first.shareValue) * 100,
+        shaReturn: ((last.sha - first.sha) / first.sha) * 100,
+        sheReturn: ((last.she - first.she) / first.she) * 100,
+        csi300Return: ((last.csi300 - first.csi300) / first.csi300) * 100,
+        sp500Return: sp500Start > 0 && sp500End > 0 ? ((sp500End - sp500Start) / sp500Start) * 100 : 0,
+        nasdaqReturn: nasdaqStart > 0 && nasdaqEnd > 0 ? ((nasdaqEnd - nasdaqStart) / nasdaqStart) * 100 : 0,
+        ftse100Return: ftse100Start > 0 && ftse100End > 0 ? ((ftse100End - ftse100Start) / ftse100Start) * 100 : 0,
+        hangsengReturn: hangsengStart > 0 && hangsengEnd > 0 ? ((hangsengEnd - hangsengStart) / hangsengStart) * 100 : 0,
+      };
+    })
     .sort((a, b) => a.year - b.year);
 }
 
@@ -415,11 +486,40 @@ export function calculateOverallMetrics(data: PortfolioData[]) {
   const csi300Annualized = (Math.pow(last.csi300 / first.csi300, 1 / years) - 1) * 100;
   const avgBenchmarkAnnualized = (shaAnnualized + sheAnnualized + csi300Annualized) / 3;
 
-  // Calculate annualized global market indices returns
-  const sp500Annualized = first.sp500 > 0 && last.sp500 > 0 ? (Math.pow(last.sp500 / first.sp500, 1 / years) - 1) * 100 : 0;
-  const nasdaqAnnualized = first.nasdaq > 0 && last.nasdaq > 0 ? (Math.pow(last.nasdaq / first.nasdaq, 1 / years) - 1) * 100 : 0;
-  const ftse100Annualized = first.ftse100 > 0 && last.ftse100 > 0 ? (Math.pow(last.ftse100 / first.ftse100, 1 / years) - 1) * 100 : 0;
-  const hangsengAnnualized = first.hangseng > 0 && last.hangseng > 0 ? (Math.pow(last.hangseng / first.hangseng, 1 / years) - 1) * 100 : 0;
+  // Helper to find the first valid value (searching forward from start)
+  const findFirstValidValue = (field: keyof PortfolioData): number => {
+    for (let i = 0; i < data.length; i++) {
+      if (Number(data[i][field]) > 0) {
+        return Number(data[i][field]);
+      }
+    }
+    return 0;
+  };
+
+  // Helper to find the last valid value (searching backward from end)
+  const findLastValidValue = (field: keyof PortfolioData): number => {
+    for (let i = data.length - 1; i >= 0; i--) {
+      if (Number(data[i][field]) > 0) {
+        return Number(data[i][field]);
+      }
+    }
+    return 0;
+  };
+
+  // Calculate annualized global market indices returns using first/last valid values
+  const sp500First = findFirstValidValue('sp500');
+  const sp500Last = findLastValidValue('sp500');
+  const nasdaqFirst = findFirstValidValue('nasdaq');
+  const nasdaqLast = findLastValidValue('nasdaq');
+  const ftse100First = findFirstValidValue('ftse100');
+  const ftse100Last = findLastValidValue('ftse100');
+  const hangsengFirst = findFirstValidValue('hangseng');
+  const hangsengLast = findLastValidValue('hangseng');
+
+  const sp500Annualized = sp500First > 0 && sp500Last > 0 ? (Math.pow(sp500Last / sp500First, 1 / years) - 1) * 100 : 0;
+  const nasdaqAnnualized = nasdaqFirst > 0 && nasdaqLast > 0 ? (Math.pow(nasdaqLast / nasdaqFirst, 1 / years) - 1) * 100 : 0;
+  const ftse100Annualized = ftse100First > 0 && ftse100Last > 0 ? (Math.pow(ftse100Last / ftse100First, 1 / years) - 1) * 100 : 0;
+  const hangsengAnnualized = hangsengFirst > 0 && hangsengLast > 0 ? (Math.pow(hangsengLast / hangsengFirst, 1 / years) - 1) * 100 : 0;
 
   return {
     totalReturn,

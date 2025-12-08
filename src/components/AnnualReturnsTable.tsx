@@ -54,15 +54,45 @@ export function AnnualReturnsTable({ returns, data }: AnnualReturnsTableProps) {
       };
     }
 
+    // Helper to find the first valid value (searching forward from start)
+    const findFirstValidValue = (field: keyof PortfolioData): number => {
+      for (let i = 0; i < data.length; i++) {
+        if (Number(data[i][field]) > 0) {
+          return Number(data[i][field]);
+        }
+      }
+      return 0;
+    };
+
+    // Helper to find the last valid value (searching backward from end)
+    const findLastValidValue = (field: keyof PortfolioData): number => {
+      for (let i = data.length - 1; i >= 0; i--) {
+        if (Number(data[i][field]) > 0) {
+          return Number(data[i][field]);
+        }
+      }
+      return 0;
+    };
+
+    // Find first and last valid values for global indices
+    const sp500First = findFirstValidValue('sp500');
+    const sp500Last = findLastValidValue('sp500');
+    const nasdaqFirst = findFirstValidValue('nasdaq');
+    const nasdaqLast = findLastValidValue('nasdaq');
+    const ftse100First = findFirstValidValue('ftse100');
+    const ftse100Last = findLastValidValue('ftse100');
+    const hangsengFirst = findFirstValidValue('hangseng');
+    const hangsengLast = findLastValidValue('hangseng');
+
     return {
       fundAnnualized: (Math.pow(last.shareValue / first.shareValue, 1 / years) - 1) * 100,
       shaAnnualized: (Math.pow(last.sha / first.sha, 1 / years) - 1) * 100,
       sheAnnualized: (Math.pow(last.she / first.she, 1 / years) - 1) * 100,
       csi300Annualized: (Math.pow(last.csi300 / first.csi300, 1 / years) - 1) * 100,
-      sp500Annualized: first.sp500 > 0 && last.sp500 > 0 ? (Math.pow(last.sp500 / first.sp500, 1 / years) - 1) * 100 : 0,
-      nasdaqAnnualized: first.nasdaq > 0 && last.nasdaq > 0 ? (Math.pow(last.nasdaq / first.nasdaq, 1 / years) - 1) * 100 : 0,
-      ftse100Annualized: first.ftse100 > 0 && last.ftse100 > 0 ? (Math.pow(last.ftse100 / first.ftse100, 1 / years) - 1) * 100 : 0,
-      hangsengAnnualized: first.hangseng > 0 && last.hangseng > 0 ? (Math.pow(last.hangseng / first.hangseng, 1 / years) - 1) * 100 : 0,
+      sp500Annualized: sp500First > 0 && sp500Last > 0 ? (Math.pow(sp500Last / sp500First, 1 / years) - 1) * 100 : 0,
+      nasdaqAnnualized: nasdaqFirst > 0 && nasdaqLast > 0 ? (Math.pow(nasdaqLast / nasdaqFirst, 1 / years) - 1) * 100 : 0,
+      ftse100Annualized: ftse100First > 0 && ftse100Last > 0 ? (Math.pow(ftse100Last / ftse100First, 1 / years) - 1) * 100 : 0,
+      hangsengAnnualized: hangsengFirst > 0 && hangsengLast > 0 ? (Math.pow(hangsengLast / hangsengFirst, 1 / years) - 1) * 100 : 0,
     };
   };
 
