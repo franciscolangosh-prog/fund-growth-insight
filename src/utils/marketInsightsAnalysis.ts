@@ -298,9 +298,26 @@ export function calculateMissingDaysImpact(
 ): BestWorstDaysImpact[] {
   if (data.length < 2) return [];
 
-  // Calculate daily returns
+  // Find first and last valid data points for this index
+  let firstValidIndex = -1;
+  let lastValidIndex = -1;
+  
+  for (let i = 0; i < data.length; i++) {
+    const value = data[i][indexKey] as number;
+    if (value > 0) {
+      if (firstValidIndex === -1) firstValidIndex = i;
+      lastValidIndex = i;
+    }
+  }
+
+  // If no valid data found, return empty
+  if (firstValidIndex === -1 || lastValidIndex === -1 || firstValidIndex >= lastValidIndex) {
+    return [];
+  }
+
+  // Calculate daily returns only for valid data range
   const dailyReturns: Array<{ date: string; return: number; value: number }> = [];
-  for (let i = 1; i < data.length; i++) {
+  for (let i = firstValidIndex + 1; i <= lastValidIndex; i++) {
     const prevValue = data[i - 1][indexKey] as number;
     const currValue = data[i][indexKey] as number;
     if (prevValue > 0 && currValue > 0) {
@@ -312,18 +329,24 @@ export function calculateMissingDaysImpact(
     }
   }
 
+  if (dailyReturns.length < 5) return []; // Need at least some data
+
   // Sort by return to find best/worst days
   const sortedByReturn = [...dailyReturns].sort((a, b) => b.return - a.return);
   
   const initialInvestment = 10000;
-  const years = (new Date(data[data.length - 1].date).getTime() - new Date(data[0].date).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  const startDate = data[firstValidIndex].date;
+  const endDate = data[lastValidIndex].date;
+  const years = (new Date(endDate).getTime() - new Date(startDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+
+  if (years <= 0) return [];
 
   // Calculate scenarios
   const scenarios: BestWorstDaysImpact[] = [];
 
   // Fully invested
-  const startValue = data[0][indexKey] as number;
-  const endValue = data[data.length - 1][indexKey] as number;
+  const startValue = data[firstValidIndex][indexKey] as number;
+  const endValue = data[lastValidIndex][indexKey] as number;
   const fullyInvestedFinal = initialInvestment * (endValue / startValue);
   
   scenarios.push({
@@ -349,7 +372,7 @@ export function calculateMissingDaysImpact(
     const annualized = (Math.pow(value / initialInvestment, 1 / years) - 1) * 100;
     
     scenarios.push({
-      scenario: `Missing Best ${n} Days`,
+      scenario: `Miss ${n} Best`,
       finalValue: value,
       annualizedReturn: annualized,
       missedDays: n,
@@ -517,8 +540,8 @@ export function getMarketSummaryStats(data: MarketDataPoint[]): {
 
 /**
  * Calculate yearly returns for all indices
- * Uses previous year's last trading day as start, current year's last trading day as end
- * This handles cases where Jan 1 or Dec 31 are not trading days
+ * Uses previous year's last valid trading day as start, current year's last valid trading day as end
+ * This handles cases where data is missing on specific dates (holidays, weekends, etc.)
  */
 export function calculateYearlyReturns(data: MarketDataPoint[]): Array<{
   year: number;
@@ -532,34 +555,69 @@ export function calculateYearlyReturns(data: MarketDataPoint[]): Array<{
 }> {
   if (data.length === 0) return [];
 
-  // Group data by year and find last trading day of each year
-  const yearEndData: Map<number, MarketDataPoint> = new Map();
+  // For each index, track the last valid value seen for each year
+  type IndexKey = 'sha' | 'she' | 'csi300' | 'sp500' | 'nasdaq' | 'ftse100' | 'hangseng';
+  const indices: IndexKey[] = ['sha', 'she', 'csi300', 'sp500', 'nasdaq', 'ftse100', 'hangseng'];
+  
+  // Map: year -> { indexKey -> last valid value for that year }
+  const yearEndValues: Map<number, Record<IndexKey, number>> = new Map();
 
   for (const point of data) {
     const year = parseInt(point.date.substring(0, 4));
-    // Always update to get the last trading day of the year
-    yearEndData.set(year, point);
+    
+    if (!yearEndValues.has(year)) {
+      yearEndValues.set(year, {
+        sha: 0, she: 0, csi300: 0, sp500: 0, nasdaq: 0, ftse100: 0, hangseng: 0
+      });
+    }
+    
+    const yearData = yearEndValues.get(year)!;
+    
+    // Update each index with valid values (> 0)
+    for (const idx of indices) {
+      const value = point[idx] as number;
+      if (value > 0) {
+        yearData[idx] = value;
+      }
+    }
   }
 
-  const years = Array.from(yearEndData.keys()).sort((a, b) => a - b);
+  const years = Array.from(yearEndValues.keys()).sort((a, b) => a - b);
   
   const calcReturn = (start: number, end: number) => 
     start > 0 && end > 0 ? ((end - start) / start) * 100 : 0;
 
-  // Calculate returns: compare each year's end to previous year's end
+  // For each year, we need the previous year's end value as the start
+  // If previous year has no valid data for an index, search backward to find the last valid value
+  const getStartValue = (year: number, idx: IndexKey): number => {
+    // First try previous year
+    const prevYear = yearEndValues.get(year - 1);
+    if (prevYear && prevYear[idx] > 0) {
+      return prevYear[idx];
+    }
+    // Search backward through earlier years
+    for (let y = year - 2; y >= years[0]; y--) {
+      const yearData = yearEndValues.get(y);
+      if (yearData && yearData[idx] > 0) {
+        return yearData[idx];
+      }
+    }
+    return 0;
+  };
+
+  // Calculate returns: compare each year's end to previous year's end (or last valid value)
   return years.slice(1).map(year => {
-    const prevYearEnd = yearEndData.get(year - 1)!;
-    const currYearEnd = yearEndData.get(year)!;
+    const currYearEnd = yearEndValues.get(year)!;
 
     return {
       year,
-      sha: calcReturn(prevYearEnd.sha, currYearEnd.sha),
-      she: calcReturn(prevYearEnd.she, currYearEnd.she),
-      csi300: calcReturn(prevYearEnd.csi300, currYearEnd.csi300),
-      sp500: calcReturn(prevYearEnd.sp500, currYearEnd.sp500),
-      nasdaq: calcReturn(prevYearEnd.nasdaq, currYearEnd.nasdaq),
-      ftse100: calcReturn(prevYearEnd.ftse100, currYearEnd.ftse100),
-      hangseng: calcReturn(prevYearEnd.hangseng, currYearEnd.hangseng),
+      sha: calcReturn(getStartValue(year, 'sha'), currYearEnd.sha),
+      she: calcReturn(getStartValue(year, 'she'), currYearEnd.she),
+      csi300: calcReturn(getStartValue(year, 'csi300'), currYearEnd.csi300),
+      sp500: calcReturn(getStartValue(year, 'sp500'), currYearEnd.sp500),
+      nasdaq: calcReturn(getStartValue(year, 'nasdaq'), currYearEnd.nasdaq),
+      ftse100: calcReturn(getStartValue(year, 'ftse100'), currYearEnd.ftse100),
+      hangseng: calcReturn(getStartValue(year, 'hangseng'), currYearEnd.hangseng),
     };
   });
 }

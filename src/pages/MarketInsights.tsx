@@ -549,9 +549,16 @@ const MarketInsights = () => {
                   {/* Impact Chart */}
                   <div className="h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={missingDaysImpact}>
+                      <BarChart data={missingDaysImpact} margin={{ bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="scenario" angle={-45} textAnchor="end" height={100} />
+                        <XAxis 
+                          dataKey="scenario" 
+                          angle={-30} 
+                          textAnchor="end" 
+                          height={80}
+                          interval={0}
+                          tick={{ fontSize: 12 }}
+                        />
                         <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
                         <Tooltip 
                           formatter={(value: number) => [`$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Final Value']}
