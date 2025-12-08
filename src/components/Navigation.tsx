@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Database, BarChart3 } from "lucide-react";
+import { Database, BarChart3, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Navigation() {
@@ -8,6 +8,7 @@ export function Navigation() {
   const navItems = [
     { path: "/", label: "Data Management", icon: Database },
     { path: "/analysis", label: "Analysis", icon: BarChart3 },
+    { path: "/market-insights", label: "Market Insights", icon: Lightbulb },
   ];
 
   return (
