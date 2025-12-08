@@ -84,15 +84,15 @@ Deno.serve(async (req) => {
 });
 
 /**
- * Fetches market data with Yahoo Finance as primary and Alpha Vantage as fallback
+ * Fetches market data with Chinese data sources as primary for Chinese indices
  */
 async function fetchMarketDataFromAPIs(date: string): Promise<MarketData> {
   console.log(`Fetching real market data for ${date}`);
   
   const symbols = {
-    sha: { yahoo: '000001.SS', alpha: '000001.SS' },
-    she: { yahoo: '399001.SZ', alpha: '399001.SZ' },
-    csi300: { yahoo: '000300.SS', alpha: '000300.SS' },
+    sha: { yahoo: '000001.SS', alpha: '000001.SS', chinese: 'sh000001' },
+    she: { yahoo: '399001.SZ', alpha: '399001.SZ', chinese: 'sz399001' },
+    csi300: { yahoo: '000300.SS', alpha: '000300.SS', chinese: 'sh000300' },
     sp500: { yahoo: '^GSPC', alpha: 'SPX' },
     nasdaq: { yahoo: '^IXIC', alpha: 'IXIC' },
     ftse100: { yahoo: '^FTSE', alpha: 'FTSE' },
@@ -101,8 +101,19 @@ async function fetchMarketDataFromAPIs(date: string): Promise<MarketData> {
 
   const results = await Promise.all(
     Object.entries(symbols).map(async ([key, symbol]) => {
-      // Try Yahoo Finance first
-      let value = await fetchYahooFinanceData(symbol.yahoo, date);
+      let value: number | undefined;
+      
+      // For Chinese indices (sha, she, csi300), try Chinese data sources first
+      if ('chinese' in symbol && symbol.chinese) {
+        value = await fetchChineseMarketData(symbol.chinese, date);
+        if (value !== undefined) {
+          console.log(`Got ${key} from Chinese source: ${value}`);
+          return { key, value };
+        }
+      }
+      
+      // Try Yahoo Finance
+      value = await fetchYahooFinanceData(symbol.yahoo, date);
       
       // If Yahoo fails, try Alpha Vantage as fallback
       if (value === undefined) {
@@ -120,6 +131,124 @@ async function fetchMarketDataFromAPIs(date: string): Promise<MarketData> {
   });
 
   return marketData;
+}
+
+// Fetch from Chinese financial data sources (similar to AkShare approach)
+// Uses EastMoney API which is reliable for Chinese indices
+async function fetchChineseMarketData(symbol: string, date: string): Promise<number | undefined> {
+  try {
+    // Try EastMoney first (more reliable)
+    const value = await fetchEastMoneyData(symbol, date);
+    if (value !== undefined) {
+      return value;
+    }
+    
+    // Try Sina as fallback
+    return await fetchSinaData(symbol, date);
+  } catch (error) {
+    console.error(`Error fetching ${symbol} from Chinese sources:`, error);
+    return undefined;
+  }
+}
+
+// Fetch from EastMoney API for Chinese market data
+async function fetchEastMoneyData(symbol: string, date: string): Promise<number | undefined> {
+  try {
+    // Convert symbol format: sh000300 -> 1.000300 (SH), sz399001 -> 0.399001 (SZ)
+    const isShanghai = symbol.startsWith('sh');
+    const code = symbol.slice(2);
+    const secId = isShanghai ? `1.${code}` : `0.${code}`;
+    
+    // Calculate date range for the query
+    const targetDate = new Date(date);
+    const startDate = new Date(targetDate);
+    startDate.setDate(startDate.getDate() - 5); // Get 5 days of data to ensure we have the target date
+    
+    const formatDate = (d: Date) => d.toISOString().split('T')[0].replace(/-/g, '');
+    
+    const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secId}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&beg=${formatDate(startDate)}&end=${formatDate(targetDate)}&lmt=10`;
+    
+    console.log(`Fetching ${symbol} from EastMoney...`);
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://quote.eastmoney.com/'
+      }
+    });
+    
+    if (!response.ok) {
+      console.warn(`EastMoney API error for ${symbol}: ${response.status}`);
+      return undefined;
+    }
+    
+    const data = await response.json();
+    
+    // Parse the response - klines format: ["date,open,close,high,low,volume,amount"]
+    const klines = data?.data?.klines;
+    if (!klines || !Array.isArray(klines)) {
+      console.warn(`No klines data from EastMoney for ${symbol}`);
+      return undefined;
+    }
+    
+    // Find the target date's data
+    for (const kline of klines) {
+      const parts = kline.split(',');
+      if (parts[0] === date && parts[2]) {
+        const closePrice = parseFloat(parts[2]);
+        if (!isNaN(closePrice) && closePrice > 0) {
+          console.log(`${symbol} from EastMoney: ${closePrice}`);
+          return closePrice;
+        }
+      }
+    }
+    
+    console.warn(`Date ${date} not found in EastMoney response for ${symbol}`);
+    return undefined;
+    
+  } catch (error) {
+    console.error(`Error fetching ${symbol} from EastMoney:`, error);
+    return undefined;
+  }
+}
+
+// Fetch from Sina Finance API as fallback for Chinese market data
+async function fetchSinaData(symbol: string, date: string): Promise<number | undefined> {
+  try {
+    const formattedDate = date.replace(/-/g, '');
+    const url = `https://finance.sina.com.cn/realstock/company/${symbol}/hisdata/klc_kl.js?d=${formattedDate}`;
+    
+    console.log(`Fetching ${symbol} for ${date} from Sina Finance...`);
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://finance.sina.com.cn/'
+      }
+    });
+    
+    if (!response.ok) {
+      console.warn(`Sina Finance API error for ${symbol}: ${response.status}`);
+      return undefined;
+    }
+    
+    const text = await response.text();
+    
+    // Parse the JavaScript response to extract price data
+    const match = text.match(/close:"([\d.]+)"/);
+    if (match && match[1]) {
+      const closePrice = parseFloat(match[1]);
+      if (!isNaN(closePrice) && closePrice > 0) {
+        console.log(`${symbol} from Sina: ${closePrice}`);
+        return closePrice;
+      }
+    }
+    
+    return undefined;
+  } catch (error) {
+    console.error(`Error fetching ${symbol} from Sina:`, error);
+    return undefined;
+  }
 }
 
 /**
