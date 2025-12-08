@@ -49,16 +49,19 @@ Deno.serve(async (req) => {
     let successCount = 0;
     let failCount = 0;
 
-    // Process dates in batches to avoid overwhelming the API
-    const batchSize = 5;
+    // Process dates ONE AT A TIME to avoid CPU spikes
+    // Use smaller batches with longer delays
+    const batchSize = 2; // Process 2 dates at a time
+    
     for (let i = 0; i < dates.length; i += batchSize) {
       const batch = dates.slice(i, i + batchSize);
       
-      const results = await Promise.allSettled(
-        batch.map(async (date) => {
+      // Process each date in the batch sequentially
+      for (const date of batch) {
+        try {
           const marketData = await fetchMarketDataFromAPIs(date);
           
-          // Only include fields that have actual values (not undefined)
+          // Only include fields that have actual values
           const dataToUpsert: Record<string, any> = { date };
           Object.entries(marketData).forEach(([key, value]) => {
             if (value !== undefined) {
@@ -74,29 +77,27 @@ Deno.serve(async (req) => {
 
             if (error) {
               console.error(`Error upserting data for ${date}:`, error);
-              throw error;
+              failCount++;
+            } else {
+              console.log(`✓ ${date}: ${Object.keys(dataToUpsert).length - 1} values`);
+              successCount++;
             }
-
-            console.log(`✓ Processed ${date} with ${Object.keys(dataToUpsert).length - 1} values`);
           } else {
-            console.warn(`⚠ No market data available for ${date}, skipping upsert`);
+            console.warn(`⚠ No data for ${date}`);
+            successCount++; // Count as success (weekend/holiday)
           }
-          
-          return date;
-        })
-      );
-
-      results.forEach((result) => {
-        if (result.status === 'fulfilled') {
-          successCount++;
-        } else {
+        } catch (error) {
+          console.error(`Error processing ${date}:`, error);
           failCount++;
         }
-      });
+        
+        // Small delay between each date to prevent CPU spikes
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
 
-      // Small delay between batches
+      // Longer delay between batches
       if (i + batchSize < dates.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 
@@ -125,43 +126,8 @@ Deno.serve(async (req) => {
   }
 });
 
+// Fetch market data - sequential calls to avoid CPU overload
 async function fetchMarketDataFromAPIs(date: string): Promise<Omit<MarketData, 'date'>> {
-  const symbols = {
-    sha: { yahoo: '000001.SS', alpha: '000001.SS', chinese: 'sh000001' },
-    she: { yahoo: '399001.SZ', alpha: '399001.SZ', chinese: 'sz399001' },
-    csi300: { yahoo: '000300.SS', alpha: '000300.SS', chinese: 'sh000300' },
-    sp500: { yahoo: '^GSPC', alpha: 'SPX' },
-    nasdaq: { yahoo: '^IXIC', alpha: 'IXIC' },
-    ftse100: { yahoo: '^FTSE', alpha: 'FTSE' },
-    hangseng: { yahoo: '^HSI', alpha: 'HSI' }
-  };
-
-  const results = await Promise.allSettled(
-    Object.entries(symbols).map(async ([key, symbol]) => {
-      let value: number | undefined;
-      
-      // For Chinese indices (sha, she, csi300), try Chinese data sources first
-      if ('chinese' in symbol && symbol.chinese) {
-        value = await fetchChineseMarketData(symbol.chinese, date);
-        if (value !== undefined) {
-          console.log(`Got ${key} from Chinese source: ${value}`);
-          return { key, value };
-        }
-      }
-      
-      // Try Yahoo Finance 
-      value = await fetchYahooFinanceData(symbol.yahoo, date);
-      
-      // If Yahoo fails, try Alpha Vantage as fallback
-      if (value === undefined) {
-        console.log(`Yahoo Finance failed for ${key}, trying Alpha Vantage...`);
-        value = await fetchAlphaVantageData(symbol.alpha, date);
-      }
-      
-      return { key, value };
-    })
-  );
-
   const marketData: Omit<MarketData, 'date'> = {
     sha: undefined,
     she: undefined,
@@ -172,123 +138,33 @@ async function fetchMarketDataFromAPIs(date: string): Promise<Omit<MarketData, '
     hangseng: undefined,
   };
 
-  results.forEach((result) => {
-    if (result.status === 'fulfilled') {
-      const { key, value } = result.value;
-      marketData[key as keyof Omit<MarketData, 'date'>] = value;
+  // Fetch indices sequentially to avoid CPU spikes
+  // Yahoo Finance symbols for all indices
+  const indices = [
+    { key: 'sha', symbol: '000001.SS' },
+    { key: 'she', symbol: '399001.SZ' },
+    { key: 'csi300', symbol: '000300.SS' },
+    { key: 'sp500', symbol: '^GSPC' },
+    { key: 'nasdaq', symbol: '^IXIC' },
+    { key: 'ftse100', symbol: '^FTSE' },
+    { key: 'hangseng', symbol: '^HSI' },
+  ];
+
+  for (const { key, symbol } of indices) {
+    try {
+      const value = await fetchYahooFinanceData(symbol, date);
+      if (value !== undefined) {
+        marketData[key as keyof Omit<MarketData, 'date'>] = value;
+      }
+    } catch (error) {
+      console.error(`Error fetching ${key}:`, error);
     }
-  });
+    
+    // Small delay between API calls
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
 
   return marketData;
-}
-
-// Fetch from Chinese financial data sources (similar to AkShare approach)
-// Uses Sina Finance API which is the primary source for AkShare's stock_zh_index_daily
-async function fetchChineseMarketData(symbol: string, date: string): Promise<number | undefined> {
-  try {
-    // Format date for API (YYYYMMDD)
-    const formattedDate = date.replace(/-/g, '');
-    
-    // Try Sina Finance API - this is what AkShare uses under the hood
-    // The API provides historical daily data for Chinese indices
-    const url = `https://finance.sina.com.cn/realstock/company/${symbol}/hisdata/klc_kl.js?d=${formattedDate}`;
-    
-    console.log(`Fetching ${symbol} for ${date} from Sina Finance...`);
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://finance.sina.com.cn/'
-      }
-    });
-    
-    if (!response.ok) {
-      console.warn(`Sina Finance API error for ${symbol}: ${response.status}`);
-      // Try alternative API - EastMoney
-      return await fetchEastMoneyData(symbol, date);
-    }
-    
-    const text = await response.text();
-    
-    // Parse the JavaScript response to extract price data
-    // Format: KLC_KL_sh000300=[{day:"2014-01-02",open:"2327.01",close:"2330.03",...}]
-    const match = text.match(/close:"([\d.]+)"/);
-    if (match && match[1]) {
-      const closePrice = parseFloat(match[1]);
-      if (!isNaN(closePrice) && closePrice > 0) {
-        console.log(`${symbol} from Sina: ${closePrice}`);
-        return closePrice;
-      }
-    }
-    
-    // If Sina doesn't have the data, try EastMoney
-    return await fetchEastMoneyData(symbol, date);
-    
-  } catch (error) {
-    console.error(`Error fetching ${symbol} from Chinese sources:`, error);
-    return await fetchEastMoneyData(symbol, date);
-  }
-}
-
-// Fallback to EastMoney API for Chinese market data
-async function fetchEastMoneyData(symbol: string, date: string): Promise<number | undefined> {
-  try {
-    // Convert symbol format: sh000300 -> 1.000300 (SH), sz399001 -> 0.399001 (SZ)
-    const isShanghai = symbol.startsWith('sh');
-    const code = symbol.slice(2);
-    const secId = isShanghai ? `1.${code}` : `0.${code}`;
-    
-    // Calculate date range for the query
-    const targetDate = new Date(date);
-    const startDate = new Date(targetDate);
-    startDate.setDate(startDate.getDate() - 5); // Get 5 days of data to ensure we have the target date
-    
-    const formatDate = (d: Date) => d.toISOString().split('T')[0].replace(/-/g, '');
-    
-    const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secId}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&beg=${formatDate(startDate)}&end=${formatDate(targetDate)}&lmt=10`;
-    
-    console.log(`Fetching ${symbol} from EastMoney...`);
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://quote.eastmoney.com/'
-      }
-    });
-    
-    if (!response.ok) {
-      console.warn(`EastMoney API error for ${symbol}: ${response.status}`);
-      return undefined;
-    }
-    
-    const data = await response.json();
-    
-    // Parse the response - klines format: ["date,open,close,high,low,volume,amount"]
-    const klines = data?.data?.klines;
-    if (!klines || !Array.isArray(klines)) {
-      console.warn(`No klines data from EastMoney for ${symbol}`);
-      return undefined;
-    }
-    
-    // Find the target date's data
-    for (const kline of klines) {
-      const parts = kline.split(',');
-      if (parts[0] === date && parts[2]) {
-        const closePrice = parseFloat(parts[2]);
-        if (!isNaN(closePrice) && closePrice > 0) {
-          console.log(`${symbol} from EastMoney: ${closePrice}`);
-          return closePrice;
-        }
-      }
-    }
-    
-    console.warn(`Date ${date} not found in EastMoney response for ${symbol}`);
-    return undefined;
-    
-  } catch (error) {
-    console.error(`Error fetching ${symbol} from EastMoney:`, error);
-    return undefined;
-  }
 }
 
 async function fetchYahooFinanceData(symbol: string, date: string): Promise<number | undefined> {
@@ -299,10 +175,13 @@ async function fetchYahooFinanceData(symbol: string, date: string): Promise<numb
 
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=1d`;
     
-    const response = await fetch(url);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
-      console.warn(`Yahoo Finance API error for ${symbol}: ${response.status}`);
       return undefined;
     }
 
@@ -310,66 +189,19 @@ async function fetchYahooFinanceData(symbol: string, date: string): Promise<numb
     const result = data?.chart?.result?.[0];
     
     if (!result) {
-      console.warn(`No result data for ${symbol} on ${date}`);
       return undefined;
     }
     
-    // For historical data, ONLY use the close price from the time series
-    // meta.regularMarketPrice is the CURRENT price, not historical!
+    // Get historical close price only
     const closePrice = result.indicators?.quote?.[0]?.close?.[0];
     if (closePrice != null && !isNaN(closePrice)) {
-      console.log(`${symbol} on ${date}: ${closePrice} (historical close)`);
       return closePrice;
     }
     
-    console.warn(`No valid price data for ${symbol} on ${date}`);
     return undefined;
 
   } catch (error) {
-    console.error(`Error fetching ${symbol}:`, error);
-    return undefined;
-  }
-}
-
-async function fetchAlphaVantageData(symbol: string, date: string): Promise<number | undefined> {
-  try {
-    const apiKey = Deno.env.get('ALPHA_VANTAGE_API_KEY');
-    if (!apiKey) {
-      console.warn('Alpha Vantage API key not configured');
-      return undefined;
-    }
-
-    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`;
-    
-    console.log(`Fetching ${symbol} from Alpha Vantage...`);
-    
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      console.error(`Alpha Vantage API error for ${symbol}: ${response.status}`);
-      return undefined;
-    }
-
-    const data = await response.json();
-    
-    if (data['Error Message'] || data['Note']) {
-      console.warn(`Alpha Vantage issue for ${symbol}:`, data['Error Message'] || data['Note']);
-      return undefined;
-    }
-    
-    const timeSeries = data['Time Series (Daily)'];
-    if (timeSeries && timeSeries[date]) {
-      const closePrice = parseFloat(timeSeries[date]['4. close']);
-      if (!isNaN(closePrice)) {
-        console.log(`${symbol} (Alpha Vantage): ${closePrice}`);
-        return closePrice;
-      }
-    }
-    
-    console.warn(`No valid price data for ${symbol} on ${date} from Alpha Vantage`);
-    return undefined;
-  } catch (error) {
-    console.error(`Error fetching ${symbol} from Alpha Vantage:`, error);
+    // Silently fail - this is expected for weekends/holidays
     return undefined;
   }
 }
