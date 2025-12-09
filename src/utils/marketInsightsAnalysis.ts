@@ -569,6 +569,9 @@ export function getMarketSummaryStats(data: MarketDataPoint[]): {
     totalReturn: number;
     annualizedReturn: number;
     maxDrawdown: number;
+    dataStartDate: string;
+    dataEndDate: string;
+    dataYears: number;
   }>;
 } {
   if (data.length === 0) {
@@ -595,21 +598,32 @@ export function getMarketSummaryStats(data: MarketDataPoint[]): {
   ];
 
   const indices = indexConfigs.map(({ name, key }) => {
-    // Find first and last valid values
+    // Find first and last valid values with their dates
     let startValue = 0;
     let endValue = 0;
+    let dataStartDate = '';
+    let dataEndDate = '';
     
     for (const point of data) {
       const val = point[key] as number;
       if (val > 0) {
-        if (startValue === 0) startValue = val;
+        if (startValue === 0) {
+          startValue = val;
+          dataStartDate = point.date;
+        }
         endValue = val;
+        dataEndDate = point.date;
       }
     }
 
+    // Calculate per-index data span in years
+    const dataYears = dataStartDate && dataEndDate
+      ? (new Date(dataEndDate).getTime() - new Date(dataStartDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+      : 0;
+
     const totalReturn = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
-    const annualizedReturn = startValue > 0 && totalYears > 0
-      ? (Math.pow(endValue / startValue, 1 / totalYears) - 1) * 100
+    const annualizedReturn = startValue > 0 && dataYears > 0
+      ? (Math.pow(endValue / startValue, 1 / dataYears) - 1) * 100
       : 0;
 
     // Calculate max drawdown
@@ -632,6 +646,9 @@ export function getMarketSummaryStats(data: MarketDataPoint[]): {
       totalReturn,
       annualizedReturn,
       maxDrawdown,
+      dataStartDate,
+      dataEndDate,
+      dataYears,
     };
   });
 

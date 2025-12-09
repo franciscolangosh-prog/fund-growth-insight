@@ -105,8 +105,8 @@ const MarketInsights = () => {
         <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-background">
           <div className="text-center">
             <Clock className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-            <h2 className="text-2xl font-bold">Loading 25 Years of Market Data...</h2>
-            <p className="text-muted-foreground mt-2">Analyzing market history from 2000 to 2025</p>
+            <h2 className="text-2xl font-bold">Loading 36 Years of Market Data...</h2>
+            <p className="text-muted-foreground mt-2">Analyzing market history from 1990 to 2025</p>
           </div>
         </div>
       </>
@@ -149,7 +149,7 @@ const MarketInsights = () => {
             
             <Alert className="bg-primary/5 border-primary/20">
               <Lightbulb className="h-4 w-4" />
-              <AlertTitle>25 Years of Market Wisdom</AlertTitle>
+              <AlertTitle>36 Years of Market Wisdom</AlertTitle>
               <AlertDescription>
                 Analyzing data from {summaryStats.startDate} to {summaryStats.endDate} ({summaryStats.totalYears.toFixed(1)} years) 
                 to help ordinary investors understand the power of patience and consistency.
@@ -192,8 +192,8 @@ const MarketInsights = () => {
             <InsightCard
               icon={Calendar}
               title="Data Span"
-              value={`${summaryStats.totalYears.toFixed(0)} Years`}
-              subtitle={`${summaryStats.startDate} to ${summaryStats.endDate}`}
+              value={`${summaryStats.indices.find(i => i.key === selectedIndex)?.dataYears.toFixed(0) ?? 0} Years`}
+              subtitle={`${summaryStats.indices.find(i => i.key === selectedIndex)?.dataStartDate ?? ''} to ${summaryStats.indices.find(i => i.key === selectedIndex)?.dataEndDate ?? ''}`}
               color="blue"
             />
             <InsightCard
