@@ -9,6 +9,13 @@ export interface MarketDataPoint {
   nasdaq: number;
   ftse100: number;
   hangseng: number;
+  nikkei225: number;
+  tsx: number;
+  klse: number;
+  cac40: number;
+  dax: number;
+  sti: number;
+  asx200: number;
 }
 
 export interface RollingReturnStats {
@@ -79,7 +86,7 @@ export async function fetchAllMarketData(): Promise<MarketDataPoint[]> {
   while (true) {
     const { data, error } = await supabase
       .from('market_indices')
-      .select('date, sha, she, csi300, sp500, nasdaq, ftse100, hangseng')
+      .select('date, sha, she, csi300, sp500, nasdaq, ftse100, hangseng, nikkei225, tsx, klse, cac40, dax, sti, asx200')
       .order('date', { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
 
@@ -99,6 +106,13 @@ export async function fetchAllMarketData(): Promise<MarketDataPoint[]> {
       nasdaq: Number(d.nasdaq) || 0,
       ftse100: Number(d.ftse100) || 0,
       hangseng: Number(d.hangseng) || 0,
+      nikkei225: Number(d.nikkei225) || 0,
+      tsx: Number(d.tsx) || 0,
+      klse: Number(d.klse) || 0,
+      cac40: Number(d.cac40) || 0,
+      dax: Number(d.dax) || 0,
+      sti: Number(d.sti) || 0,
+      asx200: Number(d.asx200) || 0,
     })));
 
     if (data.length < PAGE_SIZE) break;
@@ -133,7 +147,7 @@ export function calculateRollingReturns(
     for (let i = lookbackDays; i < data.length; i++) {
       const startValue = data[i - lookbackDays][indexKey] as number;
       const endValue = data[i][indexKey] as number;
-      
+
       if (startValue > 0 && endValue > 0) {
         const totalReturn = ((endValue - startValue) / startValue) * 100;
         const annualizedReturn = (Math.pow(endValue / startValue, 1 / years) - 1) * 100;
@@ -196,7 +210,7 @@ export function calculateRollingReturnsBoxPlot(
     for (let i = lookbackDays; i < data.length; i++) {
       const startValue = data[i - lookbackDays][indexKey] as number;
       const endValue = data[i][indexKey] as number;
-      
+
       if (startValue > 0 && endValue > 0) {
         const annualizedReturn = (Math.pow(endValue / startValue, 1 / years) - 1) * 100;
         returns.push(annualizedReturn);
@@ -221,25 +235,25 @@ export function calculateRollingReturnsBoxPlot(
 
     const sorted = [...returns].sort((a, b) => a - b);
     const n = sorted.length;
-    
+
     // Calculate quartiles
     const q1Index = Math.floor(n * 0.25);
     const medianIndex = Math.floor(n * 0.5);
     const q3Index = Math.floor(n * 0.75);
-    
+
     const q1 = sorted[q1Index];
     const median = sorted[medianIndex];
     const q3 = sorted[q3Index];
     const iqr = q3 - q1;
-    
+
     // Calculate whiskers (1.5 IQR rule)
     const lowerBound = q1 - 1.5 * iqr;
     const upperBound = q3 + 1.5 * iqr;
-    
+
     // Find actual whisker values (closest data points within bounds)
     const lowerWhisker = sorted.find(v => v >= lowerBound) ?? sorted[0];
     const upperWhisker = [...sorted].reverse().find(v => v <= upperBound) ?? sorted[n - 1];
-    
+
     // Identify outliers
     const outliers = sorted.filter(v => v < lowerBound || v > upperBound);
 
@@ -298,12 +312,12 @@ export function simulateDCA(
 
   const finalValue = monthlyData.length > 0 ? monthlyData[monthlyData.length - 1].value : 0;
   const totalReturn = totalInvested > 0 ? ((finalValue - totalInvested) / totalInvested) * 100 : 0;
-  
+
   // Calculate years for annualized return
-  const years = monthlyData.length > 0 
+  const years = monthlyData.length > 0
     ? (new Date(monthlyData[monthlyData.length - 1].date).getTime() - new Date(monthlyData[0].date).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
     : 0;
-  
+
   const annualizedReturn = years > 0 && totalInvested > 0
     ? (Math.pow(finalValue / totalInvested, 1 / years) - 1) * 100
     : 0;
@@ -406,7 +420,7 @@ export function calculateMissingDaysImpact(
   // Find first and last valid data points for this index
   let firstValidIndex = -1;
   let lastValidIndex = -1;
-  
+
   for (let i = 0; i < data.length; i++) {
     const value = data[i][indexKey] as number;
     if (value > 0) {
@@ -438,7 +452,7 @@ export function calculateMissingDaysImpact(
 
   // Sort by return to find best/worst days
   const sortedByReturn = [...dailyReturns].sort((a, b) => b.return - a.return);
-  
+
   const initialInvestment = 10000;
   const startDate = data[firstValidIndex].date;
   const endDate = data[lastValidIndex].date;
@@ -453,7 +467,7 @@ export function calculateMissingDaysImpact(
   const startValue = data[firstValidIndex][indexKey] as number;
   const endValue = data[lastValidIndex][indexKey] as number;
   const fullyInvestedFinal = initialInvestment * (endValue / startValue);
-  
+
   scenarios.push({
     scenario: 'Fully Invested',
     finalValue: fullyInvestedFinal,
@@ -464,10 +478,10 @@ export function calculateMissingDaysImpact(
   // Missing best N days scenarios
   [5, 10, 20, 30, 40].forEach(n => {
     if (n > sortedByReturn.length) return;
-    
+
     const bestDays = new Set(sortedByReturn.slice(0, n).map(d => d.date));
     let value = initialInvestment;
-    
+
     for (const day of dailyReturns) {
       if (!bestDays.has(day.date)) {
         value *= (1 + day.return);
@@ -475,7 +489,7 @@ export function calculateMissingDaysImpact(
     }
 
     const annualized = (Math.pow(value / initialInvestment, 1 / years) - 1) * 100;
-    
+
     scenarios.push({
       scenario: `Miss ${n} Best`,
       finalValue: value,
@@ -511,10 +525,10 @@ export function analyzeWorstEntryPoints(
   for (let i = 0; i < data.length; i++) {
     const value = data[i][indexKey] as number;
     if (value <= 0) continue;
-    
+
     const year = parseInt(data[i].date.substring(0, 4));
     const existing = yearlyPeaks.get(year);
-    
+
     if (!existing || value > existing.value) {
       yearlyPeaks.set(year, { index: i, value, date: data[i].date });
     }
@@ -523,7 +537,7 @@ export function analyzeWorstEntryPoints(
   // For each year's peak, find when it recovered
   const lastValue = data[data.length - 1][indexKey] as number;
   const currentYear = parseInt(data[data.length - 1].date.substring(0, 4));
-  
+
   return Array.from(yearlyPeaks.entries())
     .filter(([year]) => year < currentYear) // Exclude current year (incomplete)
     .sort(([a], [b]) => a - b)
@@ -595,6 +609,13 @@ export function getMarketSummaryStats(data: MarketDataPoint[]): {
     { name: 'NASDAQ', key: 'nasdaq' },
     { name: 'FTSE 100', key: 'ftse100' },
     { name: 'Hang Seng', key: 'hangseng' },
+    { name: 'Nikkei 225', key: 'nikkei225' },
+    { name: 'TSX Composite', key: 'tsx' },
+    { name: 'KLSE (FTSE Bursa Malaysia)', key: 'klse' },
+    { name: 'CAC 40', key: 'cac40' },
+    { name: 'DAX', key: 'dax' },
+    { name: 'STI (Straits Times Index)', key: 'sti' },
+    { name: 'ASX 200', key: 'asx200' },
   ];
 
   const indices = indexConfigs.map(({ name, key }) => {
@@ -603,7 +624,7 @@ export function getMarketSummaryStats(data: MarketDataPoint[]): {
     let endValue = 0;
     let dataStartDate = '';
     let dataEndDate = '';
-    
+
     for (const point of data) {
       const val = point[key] as number;
       if (val > 0) {
@@ -674,27 +695,35 @@ export function calculateYearlyReturns(data: MarketDataPoint[]): Array<{
   nasdaq: number;
   ftse100: number;
   hangseng: number;
+  nikkei225: number;
+  tsx: number;
+  klse: number;
+  cac40: number;
+  dax: number;
+  sti: number;
+  asx200: number;
 }> {
   if (data.length === 0) return [];
 
   // For each index, track the last valid value seen for each year
-  type IndexKey = 'sha' | 'she' | 'csi300' | 'sp500' | 'nasdaq' | 'ftse100' | 'hangseng';
-  const indices: IndexKey[] = ['sha', 'she', 'csi300', 'sp500', 'nasdaq', 'ftse100', 'hangseng'];
-  
+  type IndexKey = 'sha' | 'she' | 'csi300' | 'sp500' | 'nasdaq' | 'ftse100' | 'hangseng' | 'nikkei225' | 'tsx' | 'klse' | 'cac40' | 'dax' | 'sti' | 'asx200';
+  const indices: IndexKey[] = ['sha', 'she', 'csi300', 'sp500', 'nasdaq', 'ftse100', 'hangseng', 'nikkei225', 'tsx', 'klse', 'cac40', 'dax', 'sti', 'asx200'];
+
   // Map: year -> { indexKey -> last valid value for that year }
   const yearEndValues: Map<number, Record<IndexKey, number>> = new Map();
 
   for (const point of data) {
     const year = parseInt(point.date.substring(0, 4));
-    
+
     if (!yearEndValues.has(year)) {
       yearEndValues.set(year, {
-        sha: 0, she: 0, csi300: 0, sp500: 0, nasdaq: 0, ftse100: 0, hangseng: 0
+        sha: 0, she: 0, csi300: 0, sp500: 0, nasdaq: 0, ftse100: 0, hangseng: 0,
+        nikkei225: 0, tsx: 0, klse: 0, cac40: 0, dax: 0, sti: 0, asx200: 0
       });
     }
-    
+
     const yearData = yearEndValues.get(year)!;
-    
+
     // Update each index with valid values (> 0)
     for (const idx of indices) {
       const value = point[idx] as number;
@@ -705,8 +734,8 @@ export function calculateYearlyReturns(data: MarketDataPoint[]): Array<{
   }
 
   const years = Array.from(yearEndValues.keys()).sort((a, b) => a - b);
-  
-  const calcReturn = (start: number, end: number) => 
+
+  const calcReturn = (start: number, end: number) =>
     start > 0 && end > 0 ? ((end - start) / start) * 100 : 0;
 
   // For each year, we need the previous year's end value as the start
@@ -740,6 +769,13 @@ export function calculateYearlyReturns(data: MarketDataPoint[]): Array<{
       nasdaq: calcReturn(getStartValue(year, 'nasdaq'), currYearEnd.nasdaq),
       ftse100: calcReturn(getStartValue(year, 'ftse100'), currYearEnd.ftse100),
       hangseng: calcReturn(getStartValue(year, 'hangseng'), currYearEnd.hangseng),
+      nikkei225: calcReturn(getStartValue(year, 'nikkei225'), currYearEnd.nikkei225),
+      tsx: calcReturn(getStartValue(year, 'tsx'), currYearEnd.tsx),
+      klse: calcReturn(getStartValue(year, 'klse'), currYearEnd.klse),
+      cac40: calcReturn(getStartValue(year, 'cac40'), currYearEnd.cac40),
+      dax: calcReturn(getStartValue(year, 'dax'), currYearEnd.dax),
+      sti: calcReturn(getStartValue(year, 'sti'), currYearEnd.sti),
+      asx200: calcReturn(getStartValue(year, 'asx200'), currYearEnd.asx200),
     };
   });
 }

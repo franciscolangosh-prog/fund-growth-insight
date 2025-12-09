@@ -50,14 +50,23 @@ import {
 } from "@/utils/marketInsightsAnalysis";
 
 const INDEX_OPTIONS = [
-  { value: 'sp500', label: 'S&P 500', color: '#2563eb' },
-  { value: 'nasdaq', label: 'NASDAQ', color: '#7c3aed' },
-  { value: 'sha', label: 'Shanghai Composite', color: '#dc2626' },
-  { value: 'she', label: 'Shenzhen Composite', color: '#ea580c' },
-  { value: 'csi300', label: 'CSI 300', color: '#ca8a04' },
-  { value: 'hangseng', label: 'Hang Seng', color: '#16a34a' },
-  { value: 'ftse100', label: 'FTSE 100', color: '#0891b2' },
+  { value: 'sp500', label: 'S&P 500 (USA)', color: '#2563eb' },
+  { value: 'nasdaq', label: 'NASDAQ (USA)', color: '#7c3aed' },
+  { value: 'sha', label: 'Shanghai Composite (China)', color: '#dc2626' },
+  { value: 'she', label: 'Shenzhen Composite (China)', color: '#ea580c' },
+  { value: 'csi300', label: 'CSI 300 (China)', color: '#ca8a04' },
+  { value: 'hangseng', label: 'Hang Seng (Hong Kong)', color: '#16a34a' },
+  { value: 'ftse100', label: 'FTSE 100 (UK)', color: '#0891b2' },
+  { value: 'nikkei225', label: 'Nikkei 225 (Japan)', color: '#f59e0b' },
+  { value: 'tsx', label: 'TSX Composite (Canada)', color: '#ef4444' },
+  { value: 'klse', label: 'KLSE (Malaysia)', color: '#8b5cf6' },
+  { value: 'cac40', label: 'CAC 40 (France)', color: '#3b82f6' },
+  { value: 'dax', label: 'DAX (Germany)', color: '#10b981' },
+  { value: 'sti', label: 'STI (Singapore)', color: '#ec4899' },
+  { value: 'asx200', label: 'ASX 200 (Australia)', color: '#06b6d4' },
 ];
+
+
 
 const MarketInsights = () => {
   const [data, setData] = useState<MarketDataPoint[]>([]);
@@ -146,12 +155,12 @@ const MarketInsights = () => {
                 </p>
               </div>
             </div>
-            
+
             <Alert className="bg-primary/5 border-primary/20">
               <Lightbulb className="h-4 w-4" />
               <AlertTitle>36 Years of Market Wisdom</AlertTitle>
               <AlertDescription>
-                Analyzing data from {summaryStats.startDate} to {summaryStats.endDate} ({summaryStats.totalYears.toFixed(1)} years) 
+                Analyzing data from {summaryStats.startDate} to {summaryStats.endDate} ({summaryStats.totalYears.toFixed(1)} years)
                 to help ordinary investors understand the power of patience and consistency.
               </AlertDescription>
             </Alert>
@@ -174,8 +183,8 @@ const MarketInsights = () => {
                   {INDEX_OPTIONS.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       <span className="flex items-center gap-2">
-                        <span 
-                          className="w-3 h-3 rounded-full" 
+                        <span
+                          className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: option.color }}
                         />
                         {option.label}
@@ -253,7 +262,7 @@ const MarketInsights = () => {
                     Time Heals All Wounds: The Power of Holding Period
                   </CardTitle>
                   <CardDescription>
-                    The longer you hold, the higher your probability of positive returns. 
+                    The longer you hold, the higher your probability of positive returns.
                     Based on {data.length.toLocaleString()} trading days of historical data.
                   </CardDescription>
                 </CardHeader>
@@ -265,16 +274,16 @@ const MarketInsights = () => {
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                         <YAxis type="category" dataKey="period" width={80} />
-                        <Tooltip 
+                        <Tooltip
                           formatter={(value: number) => [`${value.toFixed(1)}%`, 'Positive Return Probability']}
                         />
                         <Bar dataKey="positivePercentage" name="Probability of Positive Return">
                           {rollingReturns.map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={entry.positivePercentage >= 90 ? '#22c55e' : 
-                                    entry.positivePercentage >= 70 ? '#84cc16' :
-                                    entry.positivePercentage >= 50 ? '#eab308' : '#ef4444'}
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={entry.positivePercentage >= 90 ? '#22c55e' :
+                                entry.positivePercentage >= 70 ? '#84cc16' :
+                                  entry.positivePercentage >= 50 ? '#eab308' : '#ef4444'}
                             />
                           ))}
                         </Bar>
@@ -326,7 +335,7 @@ const MarketInsights = () => {
                     <CheckCircle2 className="h-4 w-4" />
                     <AlertTitle>Key Takeaway</AlertTitle>
                     <AlertDescription>
-                      {rollingReturns.find(r => r.years === 10)?.positivePercentage 
+                      {rollingReturns.find(r => r.years === 10)?.positivePercentage
                         ? `Historically, holding ${selectedIndexConfig?.label} for 10 years resulted in positive returns ${rollingReturns.find(r => r.years === 10)?.positivePercentage.toFixed(0)}% of the time.`
                         : 'Longer holding periods significantly increase your probability of positive returns.'}
                       {' '}Patience is the investor's greatest asset.
@@ -343,7 +352,7 @@ const MarketInsights = () => {
                     Return Distribution by Holding Period
                   </CardTitle>
                   <CardDescription>
-                    Box plot showing the spread of annualized returns for different holding periods. 
+                    Box plot showing the spread of annualized returns for different holding periods.
                     Notice how the range narrows as holding period increases.
                   </CardDescription>
                 </CardHeader>
@@ -356,7 +365,7 @@ const MarketInsights = () => {
                       const globalMax = Math.max(...boxPlotStats.map(s => s.max));
                       const range = globalMax - globalMin;
                       const scale = (value: number) => ((value - globalMin) / range) * 100;
-                      
+
                       return (
                         <div key={stat.period} className="flex items-center gap-4">
                           <div className="w-20 text-sm font-medium text-right shrink-0">
@@ -367,57 +376,57 @@ const MarketInsights = () => {
                             <div className="absolute inset-0 flex items-center">
                               <div className="w-full h-[2px] bg-gray-200 dark:bg-gray-700" />
                             </div>
-                            
+
                             {/* Zero line */}
                             {globalMin < 0 && globalMax > 0 && (
-                              <div 
+                              <div
                                 className="absolute top-0 bottom-0 w-[2px] bg-gray-400 dark:bg-gray-500"
                                 style={{ left: `${scale(0)}%` }}
                               />
                             )}
-                            
+
                             {/* Whisker line (min to max within 1.5 IQR) */}
-                            <div 
+                            <div
                               className="absolute top-1/2 h-[2px] bg-gray-400 dark:bg-gray-500 -translate-y-1/2"
-                              style={{ 
+                              style={{
                                 left: `${scale(stat.lowerWhisker)}%`,
                                 width: `${scale(stat.upperWhisker) - scale(stat.lowerWhisker)}%`
                               }}
                             />
-                            
+
                             {/* Lower whisker cap */}
-                            <div 
+                            <div
                               className="absolute top-1/2 w-[2px] h-3 bg-gray-400 dark:bg-gray-500 -translate-y-1/2"
                               style={{ left: `${scale(stat.lowerWhisker)}%` }}
                             />
-                            
+
                             {/* Upper whisker cap */}
-                            <div 
+                            <div
                               className="absolute top-1/2 w-[2px] h-3 bg-gray-400 dark:bg-gray-500 -translate-y-1/2"
                               style={{ left: `${scale(stat.upperWhisker)}%` }}
                             />
-                            
+
                             {/* Box (Q1 to Q3) */}
-                            <div 
+                            <div
                               className="absolute top-1/2 h-8 -translate-y-1/2 rounded border-2 border-primary"
-                              style={{ 
+                              style={{
                                 left: `${scale(stat.q1)}%`,
                                 width: `${Math.max(scale(stat.q3) - scale(stat.q1), 1)}%`,
-                                backgroundColor: stat.median >= 0 
-                                  ? 'rgba(34, 197, 94, 0.3)' 
+                                backgroundColor: stat.median >= 0
+                                  ? 'rgba(34, 197, 94, 0.3)'
                                   : 'rgba(239, 68, 68, 0.3)'
                               }}
                             />
-                            
+
                             {/* Median line */}
-                            <div 
+                            <div
                               className="absolute top-1/2 w-[3px] h-8 bg-primary -translate-y-1/2"
                               style={{ left: `${scale(stat.median)}%` }}
                             />
-                            
+
                             {/* Outliers */}
                             {stat.outliers.slice(0, 10).map((outlier, i) => (
-                              <div 
+                              <div
                                 key={i}
                                 className="absolute top-1/2 w-2 h-2 rounded-full bg-orange-500 -translate-y-1/2 -translate-x-1/2"
                                 style={{ left: `${scale(outlier)}%` }}
@@ -433,7 +442,7 @@ const MarketInsights = () => {
                       );
                     })}
                   </div>
-                  
+
                   {/* Legend */}
                   <div className="flex flex-wrap gap-4 text-xs text-muted-foreground border-t pt-4">
                     <div className="flex items-center gap-2">
@@ -500,9 +509,9 @@ const MarketInsights = () => {
                     <Info className="h-4 w-4 text-purple-600" />
                     <AlertTitle>Understanding the Box Plot</AlertTitle>
                     <AlertDescription>
-                      The box shows where 50% of all returns fall (between Q1 and Q3). 
-                      Notice how the IQR (Interquartile Range) shrinks dramatically as holding period increases — 
-                      from {(boxPlotStats[0]?.q3 - boxPlotStats[0]?.q1).toFixed(1)}% for 1-year to {(boxPlotStats[boxPlotStats.length - 1]?.q3 - boxPlotStats[boxPlotStats.length - 1]?.q1).toFixed(1)}% for {boxPlotStats[boxPlotStats.length - 1]?.period}. 
+                      The box shows where 50% of all returns fall (between Q1 and Q3).
+                      Notice how the IQR (Interquartile Range) shrinks dramatically as holding period increases —
+                      from {(boxPlotStats[0]?.q3 - boxPlotStats[0]?.q1).toFixed(1)}% for 1-year to {(boxPlotStats[boxPlotStats.length - 1]?.q3 - boxPlotStats[boxPlotStats.length - 1]?.q1).toFixed(1)}% for {boxPlotStats[boxPlotStats.length - 1]?.period}.
                       This "narrowing" effect demonstrates how time reduces volatility and uncertainty.
                     </AlertDescription>
                   </Alert>
@@ -519,7 +528,7 @@ const MarketInsights = () => {
                     Dollar-Cost Averaging: The Power of Consistency
                   </CardTitle>
                   <CardDescription>
-                    What if you invested $1,000 every month for {summaryStats.totalYears.toFixed(0)} years, 
+                    What if you invested $1,000 every month for {summaryStats.totalYears.toFixed(0)} years,
                     regardless of market conditions?
                   </CardDescription>
                 </CardHeader>
@@ -558,19 +567,19 @@ const MarketInsights = () => {
                   {/* DCA Chart */}
                   <div className="h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart 
+                      <AreaChart
                         data={dcaSimulation.monthlyData.filter((_, i) => i % 20 === 0)} // Sample for performance
                       >
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="date" 
+                        <XAxis
+                          dataKey="date"
                           tickFormatter={(date) => date.substring(0, 4)}
                           interval="preserveStartEnd"
                         />
-                        <YAxis 
+                        <YAxis
                           tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
                         />
-                        <Tooltip 
+                        <Tooltip
                           formatter={(value: number, name: string) => [
                             `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
                             name === 'invested' ? 'Total Invested' : 'Portfolio Value'
@@ -578,20 +587,20 @@ const MarketInsights = () => {
                           labelFormatter={(label) => `Date: ${label}`}
                         />
                         <Legend />
-                        <Area 
-                          type="monotone" 
-                          dataKey="invested" 
+                        <Area
+                          type="monotone"
+                          dataKey="invested"
                           stackId="1"
-                          stroke="#94a3b8" 
-                          fill="#94a3b8" 
+                          stroke="#94a3b8"
+                          fill="#94a3b8"
                           fillOpacity={0.3}
                           name="Total Invested"
                         />
-                        <Area 
-                          type="monotone" 
-                          dataKey="value" 
-                          stroke={selectedIndexConfig?.color} 
-                          fill={selectedIndexConfig?.color} 
+                        <Area
+                          type="monotone"
+                          dataKey="value"
+                          stroke={selectedIndexConfig?.color}
+                          fill={selectedIndexConfig?.color}
                           fillOpacity={0.6}
                           name="Portfolio Value"
                         />
@@ -603,9 +612,9 @@ const MarketInsights = () => {
                     <Lightbulb className="h-4 w-4 text-green-600" />
                     <AlertTitle>The DCA Advantage</AlertTitle>
                     <AlertDescription>
-                      By investing consistently, you automatically buy more shares when prices are low 
-                      and fewer when prices are high. This removes emotion from investing and builds 
-                      wealth steadily over time. Your ${dcaSimulation.totalInvested.toLocaleString()} 
+                      By investing consistently, you automatically buy more shares when prices are low
+                      and fewer when prices are high. This removes emotion from investing and builds
+                      wealth steadily over time. Your ${dcaSimulation.totalInvested.toLocaleString()}
                       investment grew to ${dcaSimulation.finalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}!
                     </AlertDescription>
                   </Alert>
@@ -622,7 +631,7 @@ const MarketInsights = () => {
                     Worst Possible Timing: Buying at Each Year's Peak
                   </CardTitle>
                   <CardDescription>
-                    What if you had the worst luck and bought at the highest point of each year? 
+                    What if you had the worst luck and bought at the highest point of each year?
                     This shows how long it took to recover and your returns today.
                   </CardDescription>
                 </CardHeader>
@@ -659,7 +668,7 @@ const MarketInsights = () => {
                             <td className="text-right py-3 px-4">
                               {entry.recoveryDays ? (
                                 <span className={entry.recoveryDays > 1000 ? 'text-orange-500' : 'text-green-600'}>
-                                  {entry.recoveryDays < 365 
+                                  {entry.recoveryDays < 365
                                     ? `${entry.recoveryDays} days`
                                     : `${(entry.recoveryDays / 365).toFixed(1)} years`}
                                 </span>
@@ -706,8 +715,8 @@ const MarketInsights = () => {
                     <Info className="h-4 w-4" />
                     <AlertTitle>What This Means for You</AlertTitle>
                     <AlertDescription>
-                      Even if you bought at the absolute worst time each year (the yearly peak), 
-                      most investments eventually recovered and generated positive returns. 
+                      Even if you bought at the absolute worst time each year (the yearly peak),
+                      most investments eventually recovered and generated positive returns.
                       Time in the market heals even the worst timing decisions.
                     </AlertDescription>
                   </Alert>
@@ -724,7 +733,7 @@ const MarketInsights = () => {
                     The Cost of Market Timing: Missing the Best Days
                   </CardTitle>
                   <CardDescription>
-                    What happens if you try to time the market and miss the best trading days? 
+                    What happens if you try to time the market and miss the best trading days?
                     Starting with $10,000 investment.
                   </CardDescription>
                 </CardHeader>
@@ -734,25 +743,25 @@ const MarketInsights = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={missingDaysImpact} margin={{ bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="scenario" 
-                          angle={-30} 
-                          textAnchor="end" 
+                        <XAxis
+                          dataKey="scenario"
+                          angle={-30}
+                          textAnchor="end"
                           height={80}
                           interval={0}
                           tick={{ fontSize: 12 }}
                         />
                         <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                        <Tooltip 
+                        <Tooltip
                           formatter={(value: number) => [`$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Final Value']}
                         />
                         <Bar dataKey="finalValue" name="Final Value">
                           {missingDaysImpact.map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={index === 0 ? '#22c55e' : 
-                                    index === 1 ? '#84cc16' :
-                                    index === 2 ? '#eab308' :
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={index === 0 ? '#22c55e' :
+                                index === 1 ? '#84cc16' :
+                                  index === 2 ? '#eab308' :
                                     index === 3 ? '#f97316' : '#ef4444'}
                             />
                           ))}
@@ -777,7 +786,7 @@ const MarketInsights = () => {
                           const fullyInvested = missingDaysImpact[0]?.finalValue || 0;
                           const lost = fullyInvested - scenario.finalValue;
                           const lostPct = fullyInvested > 0 ? (lost / fullyInvested) * 100 : 0;
-                          
+
                           return (
                             <tr key={idx} className="border-b hover:bg-muted/50">
                               <td className="py-3 px-4 font-medium">{scenario.scenario}</td>
@@ -807,9 +816,9 @@ const MarketInsights = () => {
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>The Hidden Cost of Market Timing</AlertTitle>
                     <AlertDescription>
-                      The best trading days often occur during periods of high volatility, 
-                      right after the worst days. If you're out of the market trying to 
-                      avoid losses, you'll likely miss the biggest gains too. 
+                      The best trading days often occur during periods of high volatility,
+                      right after the worst days. If you're out of the market trying to
+                      avoid losses, you'll likely miss the biggest gains too.
                       Stay invested!
                     </AlertDescription>
                   </Alert>
@@ -826,7 +835,7 @@ const MarketInsights = () => {
                     Year-by-Year Market Returns
                   </CardTitle>
                   <CardDescription>
-                    Annual returns for {selectedIndexConfig?.label} over {summaryStats.totalYears.toFixed(0)} years. 
+                    Annual returns for {selectedIndexConfig?.label} over {summaryStats.totalYears.toFixed(0)} years.
                     Notice how positive years far outnumber negative ones.
                   </CardDescription>
                 </CardHeader>
@@ -838,19 +847,19 @@ const MarketInsights = () => {
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="year" />
                         <YAxis tickFormatter={(v) => `${v}%`} />
-                        <Tooltip 
+                        <Tooltip
                           formatter={(value: number) => [`${value.toFixed(2)}%`, 'Return']}
                         />
                         <ReferenceLine y={0} stroke="#666" />
-                        <Bar 
-                          dataKey={selectedIndex} 
+                        <Bar
+                          dataKey={selectedIndex}
                           name={selectedIndexConfig?.label}
                         >
                           {yearlyReturns.map((entry, index) => {
                             const value = entry[selectedIndex as keyof typeof entry] as number;
                             return (
-                              <Cell 
-                                key={`cell-${index}`} 
+                              <Cell
+                                key={`cell-${index}`}
                                 fill={value >= 0 ? '#22c55e' : '#ef4444'}
                               />
                             );
@@ -904,9 +913,9 @@ const MarketInsights = () => {
                     <Info className="h-4 w-4 text-amber-600" />
                     <AlertTitle>Why Average Return Differs from CAGR</AlertTitle>
                     <AlertDescription>
-                      <strong>Average Annual Return ({(yearlyReturns.reduce((sum, y) => sum + (y[selectedIndex as keyof typeof y] as number), 0) / yearlyReturns.length).toFixed(2)}%)</strong> is the simple arithmetic mean of yearly returns. 
-                      <strong>CAGR ({summaryStats.indices.find(i => i.key === selectedIndex)?.annualizedReturn.toFixed(2)}%)</strong> is the actual compound growth rate. 
-                      The gap exists because of "volatility drag" — when returns fluctuate, compounding produces lower results than the arithmetic average suggests. 
+                      <strong>Average Annual Return ({(yearlyReturns.reduce((sum, y) => sum + (y[selectedIndex as keyof typeof y] as number), 0) / yearlyReturns.length).toFixed(2)}%)</strong> is the simple arithmetic mean of yearly returns.
+                      <strong>CAGR ({summaryStats.indices.find(i => i.key === selectedIndex)?.annualizedReturn.toFixed(2)}%)</strong> is the actual compound growth rate.
+                      The gap exists because of "volatility drag" — when returns fluctuate, compounding produces lower results than the arithmetic average suggests.
                       For example: +50% then -50% gives an average of 0%, but actual result is -25%.
                     </AlertDescription>
                   </Alert>
@@ -915,8 +924,8 @@ const MarketInsights = () => {
                     <Lightbulb className="h-4 w-4 text-blue-600" />
                     <AlertTitle>The Odds Are in Your Favor</AlertTitle>
                     <AlertDescription>
-                      Historically, markets go up more often than they go down. While individual 
-                      years can be volatile, the long-term trend is upward. Focus on time in 
+                      Historically, markets go up more often than they go down. While individual
+                      years can be volatile, the long-term trend is upward. Focus on time in
                       the market, not timing the market.
                     </AlertDescription>
                   </Alert>
@@ -965,16 +974,16 @@ const MarketInsights = () => {
 };
 
 // Helper Components
-function InsightCard({ 
-  icon: Icon, 
-  title, 
-  value, 
-  subtitle, 
-  color 
-}: { 
-  icon: React.ElementType; 
-  title: string; 
-  value: string; 
+function InsightCard({
+  icon: Icon,
+  title,
+  value,
+  subtitle,
+  color
+}: {
+  icon: React.ElementType;
+  title: string;
+  value: string;
   subtitle: string;
   color: 'blue' | 'green' | 'purple' | 'red';
 }) {
@@ -1003,13 +1012,13 @@ function InsightCard({
   );
 }
 
-function ActionCard({ 
-  number, 
-  title, 
-  description 
-}: { 
-  number: number; 
-  title: string; 
+function ActionCard({
+  number,
+  title,
+  description
+}: {
+  number: number;
+  title: string;
   description: string;
 }) {
   return (
