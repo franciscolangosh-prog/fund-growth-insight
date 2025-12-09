@@ -115,9 +115,44 @@ export const loadPortfolioFromDatabase = async (
       marketTo += PAGE_SIZE;
     }
 
+    // Forward-fill missing market data values
+    // Each index maintains its own last valid value independently
+    const lastValid = {
+      sha: 0,
+      she: 0,
+      csi300: 0,
+      sp500: 0,
+      nasdaq: 0,
+      ftse100: 0,
+      hangseng: 0,
+    };
+
+    const forwardFilledMarketIndices = allMarketIndices.map((mi) => {
+      // Update last valid values if current entry has valid data
+      if (mi.sha && mi.sha > 0) lastValid.sha = mi.sha;
+      if (mi.she && mi.she > 0) lastValid.she = mi.she;
+      if (mi.csi300 && mi.csi300 > 0) lastValid.csi300 = mi.csi300;
+      if (mi.sp500 && mi.sp500 > 0) lastValid.sp500 = mi.sp500;
+      if (mi.nasdaq && mi.nasdaq > 0) lastValid.nasdaq = mi.nasdaq;
+      if (mi.ftse100 && mi.ftse100 > 0) lastValid.ftse100 = mi.ftse100;
+      if (mi.hangseng && mi.hangseng > 0) lastValid.hangseng = mi.hangseng;
+
+      // Use current value if valid, otherwise use last valid value
+      return {
+        date: mi.date,
+        sha: (mi.sha && mi.sha > 0) ? mi.sha : lastValid.sha,
+        she: (mi.she && mi.she > 0) ? mi.she : lastValid.she,
+        csi300: (mi.csi300 && mi.csi300 > 0) ? mi.csi300 : lastValid.csi300,
+        sp500: (mi.sp500 && mi.sp500 > 0) ? mi.sp500 : lastValid.sp500,
+        nasdaq: (mi.nasdaq && mi.nasdaq > 0) ? mi.nasdaq : lastValid.nasdaq,
+        ftse100: (mi.ftse100 && mi.ftse100 > 0) ? mi.ftse100 : lastValid.ftse100,
+        hangseng: (mi.hangseng && mi.hangseng > 0) ? mi.hangseng : lastValid.hangseng,
+      };
+    });
+
     // Create a map of market indices by date
     const marketIndicesMap = new Map(
-      allMarketIndices.map(mi => [mi.date, mi])
+      forwardFilledMarketIndices.map(mi => [mi.date, mi])
     );
 
     // Calculate derived fields and merge with market data
@@ -127,7 +162,7 @@ export const loadPortfolioFromDatabase = async (
       const shares = Number((entry as any).shares) || (shareValue > 0 ? principle / shareValue : 0);
       const marketValue = Number((entry as any).market_value) || shares * shareValue;
       const gainLoss = marketValue - principle;
-      
+
       // Calculate daily gain
       let dailyGain = 0;
       if (index > 0) {

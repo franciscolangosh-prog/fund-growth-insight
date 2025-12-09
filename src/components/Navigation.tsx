@@ -6,9 +6,9 @@ export function Navigation() {
   const location = useLocation();
 
   const navItems = [
-    { path: "/", label: "Data Management", icon: Database },
+    { path: "/", label: "Market Insights", icon: Lightbulb },
     { path: "/analysis", label: "Analysis", icon: BarChart3 },
-    { path: "/market-insights", label: "Market Insights", icon: Lightbulb },
+    { path: "/data-management", label: "Data Management", icon: Database },
   ];
 
   return (
