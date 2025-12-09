@@ -18,6 +18,13 @@ interface ParsedMarketData {
   nasdaq?: number | null;
   ftse100?: number | null;
   hangseng?: number | null;
+  nikkei225?: number | null;
+  tsx?: number | null;
+  klse?: number | null;
+  cac40?: number | null;
+  dax?: number | null;
+  sti?: number | null;
+  asx200?: number | null;
 }
 
 export function DataMigrationPanel() {
@@ -129,6 +136,13 @@ export function DataMigrationPanel() {
       else if (col === 'nasdaq' || col.includes('nasd')) colMap['nasdaq'] = idx;
       else if (col === 'ftse100' || col.includes('ftse')) colMap['ftse100'] = idx;
       else if (col === 'hangseng' || col.includes('hang') || col.includes('hsi')) colMap['hangseng'] = idx;
+      else if (col === 'nikkei225' || col.includes('nikkei') || col === 'n225') colMap['nikkei225'] = idx;
+      else if (col === 'tsx' || col.includes('tsx') || col.includes('gsptse')) colMap['tsx'] = idx;
+      else if (col === 'klse' || col.includes('klse') || col.includes('malaysia')) colMap['klse'] = idx;
+      else if (col === 'cac40' || col.includes('cac') || col.includes('fchi')) colMap['cac40'] = idx;
+      else if (col === 'dax' || col.includes('dax') || col.includes('gdaxi')) colMap['dax'] = idx;
+      else if (col === 'sti' || col.includes('straits') || col.includes('singapore')) colMap['sti'] = idx;
+      else if (col === 'asx200' || col.includes('asx') || col.includes('axjo')) colMap['asx200'] = idx;
     });
     
     if (colMap['date'] === undefined) {
@@ -151,33 +165,16 @@ export function DataMigrationPanel() {
       };
       
       // Parse each index value
-      if (colMap['sha'] !== undefined) {
-        const val = parseFloat(values[colMap['sha']]);
-        if (!isNaN(val) && val > 0) record.sha = val;
-      }
-      if (colMap['she'] !== undefined) {
-        const val = parseFloat(values[colMap['she']]);
-        if (!isNaN(val) && val > 0) record.she = val;
-      }
-      if (colMap['csi300'] !== undefined) {
-        const val = parseFloat(values[colMap['csi300']]);
-        if (!isNaN(val) && val > 0) record.csi300 = val;
-      }
-      if (colMap['sp500'] !== undefined) {
-        const val = parseFloat(values[colMap['sp500']]);
-        if (!isNaN(val) && val > 0) record.sp500 = val;
-      }
-      if (colMap['nasdaq'] !== undefined) {
-        const val = parseFloat(values[colMap['nasdaq']]);
-        if (!isNaN(val) && val > 0) record.nasdaq = val;
-      }
-      if (colMap['ftse100'] !== undefined) {
-        const val = parseFloat(values[colMap['ftse100']]);
-        if (!isNaN(val) && val > 0) record.ftse100 = val;
-      }
-      if (colMap['hangseng'] !== undefined) {
-        const val = parseFloat(values[colMap['hangseng']]);
-        if (!isNaN(val) && val > 0) record.hangseng = val;
+      const indexKeys = ['sha', 'she', 'csi300', 'sp500', 'nasdaq', 'ftse100', 'hangseng', 
+                         'nikkei225', 'tsx', 'klse', 'cac40', 'dax', 'sti', 'asx200'] as const;
+      
+      for (const key of indexKeys) {
+        if (colMap[key] !== undefined) {
+          const val = parseFloat(values[colMap[key]]);
+          if (!isNaN(val) && val > 0) {
+            (record as any)[key] = val;
+          }
+        }
       }
       
       results.push(record);
@@ -338,8 +335,11 @@ export function DataMigrationPanel() {
 
           <div className="mt-4 p-3 bg-muted rounded-md">
             <p className="text-xs font-medium mb-1">Expected CSV Format:</p>
-            <code className="text-xs text-muted-foreground">
-              date, sha, she, csi300, sp500, nasdaq, ftse100, hangseng
+            <code className="text-xs text-muted-foreground block">
+              date, sha, she, csi300, sp500, nasdaq, ftse100, hangseng,
+            </code>
+            <code className="text-xs text-muted-foreground block">
+              nikkei225, tsx, klse, cac40, dax, sti, asx200
             </code>
             <p className="text-xs text-muted-foreground mt-1">
               Date formats: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY

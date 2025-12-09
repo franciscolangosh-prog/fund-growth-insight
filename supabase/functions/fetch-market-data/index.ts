@@ -14,6 +14,13 @@ interface MarketData {
   nasdaq?: number;
   ftse100?: number;
   hangseng?: number;
+  nikkei225?: number;
+  tsx?: number;
+  klse?: number;
+  cac40?: number;
+  dax?: number;
+  sti?: number;
+  asx200?: number;
 }
 
 Deno.serve(async (req) => {
@@ -33,10 +40,6 @@ Deno.serve(async (req) => {
 
     console.log(`Fetching market data for date: ${targetDate}`);
 
-    // TODO: Replace with actual API calls to fetch real market data
-    // For now, using placeholder logic
-    // Recommended APIs: Yahoo Finance, Alpha Vantage, or Financial Modeling Prep
-    
     const marketData: MarketData = await fetchMarketDataFromAPIs(targetDate);
 
     // Only include fields that have actual values (not undefined)
@@ -97,6 +100,13 @@ async function fetchMarketDataFromAPIs(date: string): Promise<MarketData> {
     nasdaq: { yahoo: '^IXIC', alpha: 'IXIC' },
     ftse100: { yahoo: '^FTSE', alpha: 'FTSE' },
     hangseng: { yahoo: '^HSI', alpha: 'HSI' },
+    nikkei225: { yahoo: '^N225', alpha: 'N225' },
+    tsx: { yahoo: '^GSPTSE', alpha: 'GSPTSE' },
+    klse: { yahoo: '^KLSE', alpha: 'KLSE' },
+    cac40: { yahoo: '^FCHI', alpha: 'FCHI' },
+    dax: { yahoo: '^GDAXI', alpha: 'GDAXI' },
+    sti: { yahoo: '^STI', alpha: 'STI' },
+    asx200: { yahoo: '^AXJO', alpha: 'AXJO' },
   };
 
   const results = await Promise.all(

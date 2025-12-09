@@ -16,42 +16,63 @@ export type Database = {
     Tables: {
       market_indices: {
         Row: {
+          asx200: number | null
+          cac40: number | null
           created_at: string
           csi300: number | null
           date: string
+          dax: number | null
           ftse100: number | null
           hangseng: number | null
           id: string
+          klse: number | null
           nasdaq: number | null
+          nikkei225: number | null
           sha: number | null
           she: number | null
           sp500: number | null
+          sti: number | null
+          tsx: number | null
           updated_at: string
         }
         Insert: {
+          asx200?: number | null
+          cac40?: number | null
           created_at?: string
           csi300?: number | null
           date: string
+          dax?: number | null
           ftse100?: number | null
           hangseng?: number | null
           id?: string
+          klse?: number | null
           nasdaq?: number | null
+          nikkei225?: number | null
           sha?: number | null
           she?: number | null
           sp500?: number | null
+          sti?: number | null
+          tsx?: number | null
           updated_at?: string
         }
         Update: {
+          asx200?: number | null
+          cac40?: number | null
           created_at?: string
           csi300?: number | null
           date?: string
+          dax?: number | null
           ftse100?: number | null
           hangseng?: number | null
           id?: string
+          klse?: number | null
           nasdaq?: number | null
+          nikkei225?: number | null
           sha?: number | null
           she?: number | null
           sp500?: number | null
+          sti?: number | null
+          tsx?: number | null
           updated_at?: string
         }
         Relationships: []

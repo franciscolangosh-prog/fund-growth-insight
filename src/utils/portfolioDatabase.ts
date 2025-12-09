@@ -86,6 +86,13 @@ export const loadPortfolioFromDatabase = async (
       nasdaq: number | null;
       ftse100: number | null;
       hangseng: number | null;
+      nikkei225: number | null;
+      tsx: number | null;
+      klse: number | null;
+      cac40: number | null;
+      dax: number | null;
+      sti: number | null;
+      asx200: number | null;
     };
     const allMarketIndices: MarketIndexRow[] = [];
     let marketFrom = 0;
@@ -125,6 +132,13 @@ export const loadPortfolioFromDatabase = async (
       nasdaq: 0,
       ftse100: 0,
       hangseng: 0,
+      nikkei225: 0,
+      tsx: 0,
+      klse: 0,
+      cac40: 0,
+      dax: 0,
+      sti: 0,
+      asx200: 0,
     };
 
     const forwardFilledMarketIndices = allMarketIndices.map((mi) => {
@@ -136,6 +150,13 @@ export const loadPortfolioFromDatabase = async (
       if (mi.nasdaq && mi.nasdaq > 0) lastValid.nasdaq = mi.nasdaq;
       if (mi.ftse100 && mi.ftse100 > 0) lastValid.ftse100 = mi.ftse100;
       if (mi.hangseng && mi.hangseng > 0) lastValid.hangseng = mi.hangseng;
+      if (mi.nikkei225 && mi.nikkei225 > 0) lastValid.nikkei225 = mi.nikkei225;
+      if (mi.tsx && mi.tsx > 0) lastValid.tsx = mi.tsx;
+      if (mi.klse && mi.klse > 0) lastValid.klse = mi.klse;
+      if (mi.cac40 && mi.cac40 > 0) lastValid.cac40 = mi.cac40;
+      if (mi.dax && mi.dax > 0) lastValid.dax = mi.dax;
+      if (mi.sti && mi.sti > 0) lastValid.sti = mi.sti;
+      if (mi.asx200 && mi.asx200 > 0) lastValid.asx200 = mi.asx200;
 
       // Use current value if valid, otherwise use last valid value
       return {
@@ -147,6 +168,13 @@ export const loadPortfolioFromDatabase = async (
         nasdaq: (mi.nasdaq && mi.nasdaq > 0) ? mi.nasdaq : lastValid.nasdaq,
         ftse100: (mi.ftse100 && mi.ftse100 > 0) ? mi.ftse100 : lastValid.ftse100,
         hangseng: (mi.hangseng && mi.hangseng > 0) ? mi.hangseng : lastValid.hangseng,
+        nikkei225: (mi.nikkei225 && mi.nikkei225 > 0) ? mi.nikkei225 : lastValid.nikkei225,
+        tsx: (mi.tsx && mi.tsx > 0) ? mi.tsx : lastValid.tsx,
+        klse: (mi.klse && mi.klse > 0) ? mi.klse : lastValid.klse,
+        cac40: (mi.cac40 && mi.cac40 > 0) ? mi.cac40 : lastValid.cac40,
+        dax: (mi.dax && mi.dax > 0) ? mi.dax : lastValid.dax,
+        sti: (mi.sti && mi.sti > 0) ? mi.sti : lastValid.sti,
+        asx200: (mi.asx200 && mi.asx200 > 0) ? mi.asx200 : lastValid.asx200,
       };
     });
 
@@ -187,6 +215,13 @@ export const loadPortfolioFromDatabase = async (
         nasdaq: Number(marketData?.nasdaq) || 0,
         ftse100: Number(marketData?.ftse100) || 0,
         hangseng: Number(marketData?.hangseng) || 0,
+        nikkei225: Number(marketData?.nikkei225) || 0,
+        tsx: Number(marketData?.tsx) || 0,
+        klse: Number(marketData?.klse) || 0,
+        cac40: Number(marketData?.cac40) || 0,
+        dax: Number(marketData?.dax) || 0,
+        sti: Number(marketData?.sti) || 0,
+        asx200: Number(marketData?.asx200) || 0,
         shares,
         gainLoss,
         dailyGain,

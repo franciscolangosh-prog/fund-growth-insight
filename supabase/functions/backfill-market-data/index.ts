@@ -7,13 +7,20 @@ const corsHeaders = {
 
 interface MarketData {
   date: string;
-  sha: number | undefined;
-  she: number | undefined;
-  csi300: number | undefined;
-  sp500?: number | undefined;
-  nasdaq?: number | undefined;
-  ftse100?: number | undefined;
-  hangseng?: number | undefined;
+  sha?: number;
+  she?: number;
+  csi300?: number;
+  sp500?: number;
+  nasdaq?: number;
+  ftse100?: number;
+  hangseng?: number;
+  nikkei225?: number;
+  tsx?: number;
+  klse?: number;
+  cac40?: number;
+  dax?: number;
+  sti?: number;
+  asx200?: number;
 }
 
 Deno.serve(async (req) => {
@@ -136,6 +143,13 @@ async function fetchMarketDataFromAPIs(date: string): Promise<Omit<MarketData, '
     nasdaq: undefined,
     ftse100: undefined,
     hangseng: undefined,
+    nikkei225: undefined,
+    tsx: undefined,
+    klse: undefined,
+    cac40: undefined,
+    dax: undefined,
+    sti: undefined,
+    asx200: undefined,
   };
 
   // Fetch indices sequentially to avoid CPU spikes
@@ -148,6 +162,13 @@ async function fetchMarketDataFromAPIs(date: string): Promise<Omit<MarketData, '
     { key: 'nasdaq', symbol: '^IXIC' },
     { key: 'ftse100', symbol: '^FTSE' },
     { key: 'hangseng', symbol: '^HSI' },
+    { key: 'nikkei225', symbol: '^N225' },
+    { key: 'tsx', symbol: '^GSPTSE' },
+    { key: 'klse', symbol: '^KLSE' },
+    { key: 'cac40', symbol: '^FCHI' },
+    { key: 'dax', symbol: '^GDAXI' },
+    { key: 'sti', symbol: '^STI' },
+    { key: 'asx200', symbol: '^AXJO' },
   ];
 
   for (const { key, symbol } of indices) {
