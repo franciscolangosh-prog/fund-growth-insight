@@ -18,6 +18,13 @@ export function AnnualReturnsTable({ returns, data }: AnnualReturnsTableProps) {
       { name: 'Nasdaq', value: row.nasdaqReturn },
       { name: 'FTSE100', value: row.ftse100Return },
       { name: 'HangSeng', value: row.hangsengReturn },
+      { name: 'Nikkei225', value: row.nikkei225Return },
+      { name: 'TSX', value: row.tsxReturn },
+      { name: 'KLSE', value: row.klseReturn },
+      { name: 'CAC40', value: row.cac40Return },
+      { name: 'DAX', value: row.daxReturn },
+      { name: 'STI', value: row.stiReturn },
+      { name: 'ASX200', value: row.asx200Return },
     ];
     return indices.reduce((best, current) => current.value > best.value ? current : best);
   };
@@ -51,6 +58,13 @@ export function AnnualReturnsTable({ returns, data }: AnnualReturnsTableProps) {
         nasdaqAnnualized: 0,
         ftse100Annualized: 0,
         hangsengAnnualized: 0,
+        nikkei225Annualized: 0,
+        tsxAnnualized: 0,
+        klseAnnualized: 0,
+        cac40Annualized: 0,
+        daxAnnualized: 0,
+        stiAnnualized: 0,
+        asx200Annualized: 0,
       };
     }
 
@@ -83,6 +97,20 @@ export function AnnualReturnsTable({ returns, data }: AnnualReturnsTableProps) {
     const ftse100Last = findLastValidValue('ftse100');
     const hangsengFirst = findFirstValidValue('hangseng');
     const hangsengLast = findLastValidValue('hangseng');
+    const nikkei225First = findFirstValidValue('nikkei225');
+    const nikkei225Last = findLastValidValue('nikkei225');
+    const tsxFirst = findFirstValidValue('tsx');
+    const tsxLast = findLastValidValue('tsx');
+    const klseFirst = findFirstValidValue('klse');
+    const klseLast = findLastValidValue('klse');
+    const cac40First = findFirstValidValue('cac40');
+    const cac40Last = findLastValidValue('cac40');
+    const daxFirst = findFirstValidValue('dax');
+    const daxLast = findLastValidValue('dax');
+    const stiFirst = findFirstValidValue('sti');
+    const stiLast = findLastValidValue('sti');
+    const asx200First = findFirstValidValue('asx200');
+    const asx200Last = findLastValidValue('asx200');
 
     return {
       fundAnnualized: (Math.pow(last.shareValue / first.shareValue, 1 / years) - 1) * 100,
@@ -93,6 +121,13 @@ export function AnnualReturnsTable({ returns, data }: AnnualReturnsTableProps) {
       nasdaqAnnualized: nasdaqFirst > 0 && nasdaqLast > 0 ? (Math.pow(nasdaqLast / nasdaqFirst, 1 / years) - 1) * 100 : 0,
       ftse100Annualized: ftse100First > 0 && ftse100Last > 0 ? (Math.pow(ftse100Last / ftse100First, 1 / years) - 1) * 100 : 0,
       hangsengAnnualized: hangsengFirst > 0 && hangsengLast > 0 ? (Math.pow(hangsengLast / hangsengFirst, 1 / years) - 1) * 100 : 0,
+      nikkei225Annualized: nikkei225First > 0 && nikkei225Last > 0 ? (Math.pow(nikkei225Last / nikkei225First, 1 / years) - 1) * 100 : 0,
+      tsxAnnualized: tsxFirst > 0 && tsxLast > 0 ? (Math.pow(tsxLast / tsxFirst, 1 / years) - 1) * 100 : 0,
+      klseAnnualized: klseFirst > 0 && klseLast > 0 ? (Math.pow(klseLast / klseFirst, 1 / years) - 1) * 100 : 0,
+      cac40Annualized: cac40First > 0 && cac40Last > 0 ? (Math.pow(cac40Last / cac40First, 1 / years) - 1) * 100 : 0,
+      daxAnnualized: daxFirst > 0 && daxLast > 0 ? (Math.pow(daxLast / daxFirst, 1 / years) - 1) * 100 : 0,
+      stiAnnualized: stiFirst > 0 && stiLast > 0 ? (Math.pow(stiLast / stiFirst, 1 / years) - 1) * 100 : 0,
+      asx200Annualized: asx200First > 0 && asx200Last > 0 ? (Math.pow(asx200Last / asx200First, 1 / years) - 1) * 100 : 0,
     };
   };
 
@@ -109,6 +144,13 @@ export function AnnualReturnsTable({ returns, data }: AnnualReturnsTableProps) {
       { name: 'Nasdaq', value: annualized.nasdaqAnnualized },
       { name: 'FTSE100', value: annualized.ftse100Annualized },
       { name: 'HangSeng', value: annualized.hangsengAnnualized },
+      { name: 'Nikkei225', value: annualized.nikkei225Annualized },
+      { name: 'TSX', value: annualized.tsxAnnualized },
+      { name: 'KLSE', value: annualized.klseAnnualized },
+      { name: 'CAC40', value: annualized.cac40Annualized },
+      { name: 'DAX', value: annualized.daxAnnualized },
+      { name: 'STI', value: annualized.stiAnnualized },
+      { name: 'ASX200', value: annualized.asx200Annualized },
     ];
     return indices.reduce((best, current) => (current.value > 0 && current.value > best.value) ? current : best);
   };
@@ -133,6 +175,13 @@ export function AnnualReturnsTable({ returns, data }: AnnualReturnsTableProps) {
               <TableHead className="text-right">Nasdaq</TableHead>
               <TableHead className="text-right">FTSE100</TableHead>
               <TableHead className="text-right">HangSeng</TableHead>
+              <TableHead className="text-right">Nikkei225</TableHead>
+              <TableHead className="text-right">TSX</TableHead>
+              <TableHead className="text-right">KLSE</TableHead>
+              <TableHead className="text-right">CAC40</TableHead>
+              <TableHead className="text-right">DAX</TableHead>
+              <TableHead className="text-right">STI</TableHead>
+              <TableHead className="text-right">ASX200</TableHead>
               <TableHead className="text-right">Best</TableHead>
             </TableRow>
           </TableHeader>
@@ -166,6 +215,27 @@ export function AnnualReturnsTable({ returns, data }: AnnualReturnsTableProps) {
                   <TableCell className={`text-right ${row.hangsengReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {row.hangsengReturn !== 0 ? `${row.hangsengReturn.toFixed(2)}%` : '-'}
                   </TableCell>
+                  <TableCell className={`text-right ${row.nikkei225Return >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {row.nikkei225Return !== 0 ? `${row.nikkei225Return.toFixed(2)}%` : '-'}
+                  </TableCell>
+                  <TableCell className={`text-right ${row.tsxReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {row.tsxReturn !== 0 ? `${row.tsxReturn.toFixed(2)}%` : '-'}
+                  </TableCell>
+                  <TableCell className={`text-right ${row.klseReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {row.klseReturn !== 0 ? `${row.klseReturn.toFixed(2)}%` : '-'}
+                  </TableCell>
+                  <TableCell className={`text-right ${row.cac40Return >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {row.cac40Return !== 0 ? `${row.cac40Return.toFixed(2)}%` : '-'}
+                  </TableCell>
+                  <TableCell className={`text-right ${row.daxReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {row.daxReturn !== 0 ? `${row.daxReturn.toFixed(2)}%` : '-'}
+                  </TableCell>
+                  <TableCell className={`text-right ${row.stiReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {row.stiReturn !== 0 ? `${row.stiReturn.toFixed(2)}%` : '-'}
+                  </TableCell>
+                  <TableCell className={`text-right ${row.asx200Return >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {row.asx200Return !== 0 ? `${row.asx200Return.toFixed(2)}%` : '-'}
+                  </TableCell>
                   <TableCell className="text-right font-bold text-primary">
                     {best.name}
                   </TableCell>
@@ -198,6 +268,27 @@ export function AnnualReturnsTable({ returns, data }: AnnualReturnsTableProps) {
               </TableCell>
               <TableCell className={`text-right font-bold ${annualized.hangsengAnnualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {annualized.hangsengAnnualized !== 0 ? `${annualized.hangsengAnnualized.toFixed(2)}%` : '-'}
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.nikkei225Annualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.nikkei225Annualized !== 0 ? `${annualized.nikkei225Annualized.toFixed(2)}%` : '-'}
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.tsxAnnualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.tsxAnnualized !== 0 ? `${annualized.tsxAnnualized.toFixed(2)}%` : '-'}
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.klseAnnualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.klseAnnualized !== 0 ? `${annualized.klseAnnualized.toFixed(2)}%` : '-'}
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.cac40Annualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.cac40Annualized !== 0 ? `${annualized.cac40Annualized.toFixed(2)}%` : '-'}
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.daxAnnualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.daxAnnualized !== 0 ? `${annualized.daxAnnualized.toFixed(2)}%` : '-'}
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.stiAnnualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.stiAnnualized !== 0 ? `${annualized.stiAnnualized.toFixed(2)}%` : '-'}
+              </TableCell>
+              <TableCell className={`text-right font-bold ${annualized.asx200Annualized >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {annualized.asx200Annualized !== 0 ? `${annualized.asx200Annualized.toFixed(2)}%` : '-'}
               </TableCell>
               <TableCell className="text-right font-bold text-primary">
                 {bestAnnualized.name}

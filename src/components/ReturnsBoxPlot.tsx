@@ -7,7 +7,7 @@ interface ReturnsBoxPlotProps {
   data: PortfolioData[];
 }
 
-type BenchmarkKey = 'csi300' | 'sp500' | 'nasdaq' | 'sha' | 'she' | 'ftse100' | 'hangseng';
+type BenchmarkKey = 'csi300' | 'sp500' | 'nasdaq' | 'sha' | 'she' | 'ftse100' | 'hangseng' | 'nikkei225' | 'tsx' | 'klse' | 'cac40' | 'dax' | 'sti' | 'asx200';
 
 interface BoxPlotStats {
   min: number;
@@ -20,13 +20,20 @@ interface BoxPlotStats {
 }
 
 const BENCHMARKS: { key: BenchmarkKey; label: string; color: string }[] = [
-  { key: 'csi300', label: 'CSI 300', color: '#10b981' },
-  { key: 'sp500', label: 'S&P 500', color: '#ef4444' },
-  { key: 'nasdaq', label: 'Nasdaq', color: '#8b5cf6' },
-  { key: 'sha', label: 'Shanghai (SHA)', color: '#f59e0b' },
-  { key: 'she', label: 'Shenzhen (SHE)', color: '#06b6d4' },
-  { key: 'ftse100', label: 'FTSE 100', color: '#ec4899' },
-  { key: 'hangseng', label: 'Hang Seng', color: '#84cc16' },
+  { key: 'csi300', label: 'CSI 300 (China)', color: '#10b981' },
+  { key: 'sp500', label: 'S&P 500 (USA)', color: '#ef4444' },
+  { key: 'nasdaq', label: 'Nasdaq (USA)', color: '#8b5cf6' },
+  { key: 'sha', label: 'Shanghai (China)', color: '#f59e0b' },
+  { key: 'she', label: 'Shenzhen (China)', color: '#06b6d4' },
+  { key: 'ftse100', label: 'FTSE 100 (UK)', color: '#ec4899' },
+  { key: 'hangseng', label: 'Hang Seng (Hong Kong)', color: '#84cc16' },
+  { key: 'nikkei225', label: 'Nikkei 225 (Japan)', color: '#f59e0b' },
+  { key: 'tsx', label: 'TSX (Canada)', color: '#ef4444' },
+  { key: 'klse', label: 'KLSE (Malaysia)', color: '#8b5cf6' },
+  { key: 'cac40', label: 'CAC 40 (France)', color: '#3b82f6' },
+  { key: 'dax', label: 'DAX (Germany)', color: '#10b981' },
+  { key: 'sti', label: 'STI (Singapore)', color: '#ec4899' },
+  { key: 'asx200', label: 'ASX 200 (Australia)', color: '#06b6d4' },
 ];
 
 const FUND_COLOR = '#4338ca';
@@ -49,10 +56,10 @@ function calculatePercentile(arr: number[], percentile: number): number {
 
 function calculateBoxPlotStats(values: number[]): BoxPlotStats | null {
   if (values.length === 0) return null;
-  
+
   const sorted = [...values].sort((a, b) => a - b);
   const sum = values.reduce((a, b) => a + b, 0);
-  
+
   return {
     min: sorted[0],
     q1: calculatePercentile(sorted, 25),
@@ -123,7 +130,7 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
   ]
     .filter((stats): stats is BoxPlotStats => stats !== null)
     .flatMap(stats => [stats.min, stats.max]);
-  
+
   const minValue = allValues.length > 0 ? Math.min(...allValues) : -20;
   const maxValue = allValues.length > 0 ? Math.max(...allValues) : 30;
   const range = maxValue - minValue;
@@ -136,13 +143,13 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
 
   const renderBoxPlot = (stats: BoxPlotStats | null, color: string, yOffset: number) => {
     if (!stats) return null;
-    
+
     return (
       <>
         {/* Whisker line (min to max) */}
-        <div 
+        <div
           className="absolute h-0.5"
-          style={{ 
+          style={{
             left: `${getPosition(stats.min)}%`,
             width: `${getPosition(stats.max) - getPosition(stats.min)}%`,
             backgroundColor: color,
@@ -151,33 +158,33 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
             transform: 'translateY(-50%)',
           }}
         />
-        
+
         {/* Min whisker cap */}
-        <div 
+        <div
           className="absolute w-0.5"
-          style={{ 
+          style={{
             left: `${getPosition(stats.min)}%`,
             backgroundColor: color,
             height: '30%',
             top: `${yOffset - 15}%`,
           }}
         />
-        
+
         {/* Max whisker cap */}
-        <div 
+        <div
           className="absolute w-0.5"
-          style={{ 
+          style={{
             left: `${getPosition(stats.max)}%`,
             backgroundColor: color,
             height: '30%',
             top: `${yOffset - 15}%`,
           }}
         />
-        
+
         {/* Box (Q1 to Q3) */}
-        <div 
+        <div
           className="absolute rounded border-2"
-          style={{ 
+          style={{
             left: `${getPosition(stats.q1)}%`,
             width: `${getPosition(stats.q3) - getPosition(stats.q1)}%`,
             backgroundColor: `${color}20`,
@@ -186,22 +193,22 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
             top: `${yOffset - 15}%`,
           }}
         />
-        
+
         {/* Median line */}
-        <div 
+        <div
           className="absolute w-0.5"
-          style={{ 
+          style={{
             left: `${getPosition(stats.median)}%`,
             backgroundColor: color,
             height: '30%',
             top: `${yOffset - 15}%`,
           }}
         />
-        
+
         {/* Mean marker (diamond) */}
-        <div 
+        <div
           className="absolute w-2 h-2 -translate-x-1/2 rotate-45"
-          style={{ 
+          style={{
             left: `${getPosition(stats.mean)}%`,
             backgroundColor: color,
             top: `${yOffset}%`,
@@ -254,7 +261,7 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
             const fundStats = fundData[period.key];
             const benchmarkStats = benchmarkData[period.key];
             const hasData = fundStats || benchmarkStats;
-            
+
             return (
               <div key={period.key} className="flex items-center gap-4">
                 <div className="w-20 text-sm font-medium text-muted-foreground">{period.label}</div>
@@ -263,18 +270,18 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
                     <>
                       {/* Scale background */}
                       <div className="absolute inset-0 bg-muted/30 rounded" />
-                      
+
                       {/* Zero reference line */}
                       {scaleMin < 0 && scaleMax > 0 && (
-                        <div 
+                        <div
                           className="absolute top-0 bottom-0 w-px bg-muted-foreground/50"
                           style={{ left: `${getPosition(0)}%` }}
                         />
                       )}
-                      
+
                       {/* Fund box plot (top) */}
                       {renderBoxPlot(fundStats, FUND_COLOR, 30)}
-                      
+
                       {/* Benchmark box plot (bottom) */}
                       {renderBoxPlot(benchmarkStats, selectedBenchmarkInfo.color, 70)}
                     </>
@@ -353,7 +360,7 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
               {PERIODS.map(period => {
                 const fundStats = fundData[period.key];
                 const benchmarkStats = benchmarkData[period.key];
-                
+
                 return (
                   <>
                     <tr key={`${period.key}-fund`} className="border-b">
@@ -396,7 +403,7 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
 
         {/* Interpretation */}
         <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg">
-          <strong>How to read:</strong> Each row shows your portfolio (top, blue) vs the selected benchmark (bottom, colored). 
+          <strong>How to read:</strong> Each row shows your portfolio (top, blue) vs the selected benchmark (bottom, colored).
           The box represents the middle 50% of returns. A narrower box means more consistent performance.
           Compare medians to see which performs better on a typical basis.
         </div>

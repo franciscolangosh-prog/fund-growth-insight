@@ -38,7 +38,7 @@ const Analysis = () => {
   const loadPortfoliosList = async () => {
     const portfolioList = await listPortfolios();
     setPortfolios(portfolioList);
-    
+
     if (portfolioList.length > 0 && !selectedPortfolioId) {
       setSelectedPortfolioId(portfolioList[0].id);
     }
@@ -54,7 +54,7 @@ const Analysis = () => {
         const portfolioData = await loadPortfolioFromDatabase(portfolioList[0].id);
         setData(portfolioData);
       }
-      
+
       setLoading(false);
     };
 
@@ -172,6 +172,13 @@ const Analysis = () => {
                 nasdaq: metrics.nasdaqAnnualized,
                 ftse100: metrics.ftse100Annualized,
                 hangseng: metrics.hangsengAnnualized,
+                nikkei225: metrics.nikkei225Annualized,
+                tsx: metrics.tsxAnnualized,
+                klse: metrics.klseAnnualized,
+                cac40: metrics.cac40Annualized,
+                dax: metrics.daxAnnualized,
+                sti: metrics.stiAnnualized,
+                asx200: metrics.asx200Annualized,
               }}
               outperformance={metrics.annualizedOutperformance}
             />

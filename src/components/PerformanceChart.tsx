@@ -20,7 +20,7 @@ interface IndexConfig {
   name: string;
   color: string;
   strokeWidth: number;
-  region: 'fund' | 'china' | 'us' | 'international';
+  region: 'fund' | 'china' | 'us' | 'europe' | 'asia' | 'americas';
 }
 
 const INDEX_CONFIG: IndexConfig[] = [
@@ -30,14 +30,23 @@ const INDEX_CONFIG: IndexConfig[] = [
   { key: 'CSI300', name: 'CSI 300', color: '#6ee7b7', strokeWidth: 1.5, region: 'china' },
   { key: 'SP500', name: 'S&P 500', color: '#ef4444', strokeWidth: 2, region: 'us' },
   { key: 'Nasdaq', name: 'Nasdaq', color: '#f59e0b', strokeWidth: 2, region: 'us' },
-  { key: 'FTSE100', name: 'FTSE 100', color: '#f97316', strokeWidth: 1.5, region: 'international' },
-  { key: 'HangSeng', name: 'Hang Seng', color: '#a855f7', strokeWidth: 1.5, region: 'international' },
+  { key: 'FTSE100', name: 'FTSE 100 (UK)', color: '#f97316', strokeWidth: 1.5, region: 'europe' },
+  { key: 'HangSeng', name: 'Hang Seng (HK)', color: '#a855f7', strokeWidth: 1.5, region: 'asia' },
+  { key: 'Nikkei225', name: 'Nikkei 225 (Japan)', color: '#f59e0b', strokeWidth: 1.5, region: 'asia' },
+  { key: 'TSX', name: 'TSX (Canada)', color: '#ef4444', strokeWidth: 1.5, region: 'americas' },
+  { key: 'KLSE', name: 'KLSE (Malaysia)', color: '#8b5cf6', strokeWidth: 1.5, region: 'asia' },
+  { key: 'CAC40', name: 'CAC 40 (France)', color: '#3b82f6', strokeWidth: 1.5, region: 'europe' },
+  { key: 'DAX', name: 'DAX (Germany)', color: '#10b981', strokeWidth: 1.5, region: 'europe' },
+  { key: 'STI', name: 'STI (Singapore)', color: '#ec4899', strokeWidth: 1.5, region: 'asia' },
+  { key: 'ASX200', name: 'ASX 200 (Australia)', color: '#06b6d4', strokeWidth: 1.5, region: 'asia' },
 ];
 
 const REGION_LABELS: Record<string, string> = {
   china: 'China Markets',
   us: 'US Markets',
-  international: 'International',
+  europe: 'Europe',
+  asia: 'Asia Pacific',
+  americas: 'Americas',
 };
 
 const CustomTooltip = ({ active, payload, visibleIndices }: CustomTooltipProps) => {
@@ -48,7 +57,7 @@ const CustomTooltip = ({ active, payload, visibleIndices }: CustomTooltipProps) 
     const month = monthNames[date.getMonth()];
     const day = date.getDate();
     const year = date.getFullYear();
-    
+
     // Add ordinal suffix
     const getOrdinalSuffix = (n: number) => {
       const j = n % 10;
@@ -58,14 +67,14 @@ const CustomTooltip = ({ active, payload, visibleIndices }: CustomTooltipProps) 
       if (j === 3 && k !== 13) return n + 'rd';
       return n + 'th';
     };
-    
+
     return `${month} ${getOrdinalSuffix(day)}, ${year}`;
   };
 
   if (active && payload && payload.length) {
     const dataPoint = payload[0].payload;
     const formattedDate = dataPoint.originalDate ? formatDate(dataPoint.originalDate) : dataPoint.date;
-    
+
     const actualValueMap: Record<string, number> = {
       Fund: dataPoint.actualFund,
       SHA: dataPoint.actualSHA,
@@ -75,6 +84,13 @@ const CustomTooltip = ({ active, payload, visibleIndices }: CustomTooltipProps) 
       Nasdaq: dataPoint.actualNasdaq,
       FTSE100: dataPoint.actualFTSE,
       HangSeng: dataPoint.actualHangSeng,
+      Nikkei225: dataPoint.actualNikkei225,
+      TSX: dataPoint.actualTSX,
+      KLSE: dataPoint.actualKLSE,
+      CAC40: dataPoint.actualCAC40,
+      DAX: dataPoint.actualDAX,
+      STI: dataPoint.actualSTI,
+      ASX200: dataPoint.actualASX200,
     };
 
     const percentValueMap: Record<string, number> = {
@@ -86,6 +102,13 @@ const CustomTooltip = ({ active, payload, visibleIndices }: CustomTooltipProps) 
       Nasdaq: dataPoint.Nasdaq,
       FTSE100: dataPoint.FTSE100,
       HangSeng: dataPoint.HangSeng,
+      Nikkei225: dataPoint.Nikkei225,
+      TSX: dataPoint.TSX,
+      KLSE: dataPoint.KLSE,
+      CAC40: dataPoint.CAC40,
+      DAX: dataPoint.DAX,
+      STI: dataPoint.STI,
+      ASX200: dataPoint.ASX200,
     };
 
     // Group visible indices by region
@@ -98,7 +121,7 @@ const CustomTooltip = ({ active, payload, visibleIndices }: CustomTooltipProps) 
         visibleByRegion[config.region].push(config);
       }
     });
-    
+
     return (
       <div className="bg-background border border-border p-3 rounded-lg shadow-lg max-h-96 overflow-y-auto">
         <p className="font-semibold mb-2">{formattedDate}</p>
@@ -111,13 +134,13 @@ const CustomTooltip = ({ active, payload, visibleIndices }: CustomTooltipProps) 
               </span>
             </p>
           ))}
-          
+
           {visibleByRegion['china']?.length > 0 && (
             <>
               <p className="text-xs text-muted-foreground mt-2">China Markets</p>
               {visibleByRegion['china'].map(config => (
                 <p key={config.key} style={{ color: config.color }}>
-                  {config.key}: {actualValueMap[config.key].toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {config.name}: {actualValueMap[config.key].toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   <span className="text-xs text-muted-foreground ml-2">
                     ({percentValueMap[config.key] >= 0 ? '+' : ''}{percentValueMap[config.key].toFixed(2)}%)
                   </span>
@@ -125,13 +148,13 @@ const CustomTooltip = ({ active, payload, visibleIndices }: CustomTooltipProps) 
               ))}
             </>
           )}
-          
+
           {visibleByRegion['us']?.length > 0 && (
             <>
               <p className="text-xs text-muted-foreground mt-2">US Markets</p>
               {visibleByRegion['us'].map(config => (
                 <p key={config.key} style={{ color: config.color }}>
-                  {config.key === 'SP500' ? 'S&P500' : config.key}: {actualValueMap[config.key].toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {config.name}: {actualValueMap[config.key].toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   {percentValueMap[config.key] !== 0 && (
                     <span className="text-xs text-muted-foreground ml-2">
                       ({percentValueMap[config.key] >= 0 ? '+' : ''}{percentValueMap[config.key].toFixed(2)}%)
@@ -141,13 +164,45 @@ const CustomTooltip = ({ active, payload, visibleIndices }: CustomTooltipProps) 
               ))}
             </>
           )}
-          
-          {visibleByRegion['international']?.length > 0 && (
+
+          {visibleByRegion['europe']?.length > 0 && (
             <>
-              <p className="text-xs text-muted-foreground mt-2">International</p>
-              {visibleByRegion['international'].map(config => (
+              <p className="text-xs text-muted-foreground mt-2">Europe</p>
+              {visibleByRegion['europe'].map(config => (
                 <p key={config.key} style={{ color: config.color }}>
-                  {config.key}: {actualValueMap[config.key].toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {config.name}: {actualValueMap[config.key].toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {percentValueMap[config.key] !== 0 && (
+                    <span className="text-xs text-muted-foreground ml-2">
+                      ({percentValueMap[config.key] >= 0 ? '+' : ''}{percentValueMap[config.key].toFixed(2)}%)
+                    </span>
+                  )}
+                </p>
+              ))}
+            </>
+          )}
+
+          {visibleByRegion['asia']?.length > 0 && (
+            <>
+              <p className="text-xs text-muted-foreground mt-2">Asia Pacific</p>
+              {visibleByRegion['asia'].map(config => (
+                <p key={config.key} style={{ color: config.color }}>
+                  {config.name}: {actualValueMap[config.key].toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {percentValueMap[config.key] !== 0 && (
+                    <span className="text-xs text-muted-foreground ml-2">
+                      ({percentValueMap[config.key] >= 0 ? '+' : ''}{percentValueMap[config.key].toFixed(2)}%)
+                    </span>
+                  )}
+                </p>
+              ))}
+            </>
+          )}
+
+          {visibleByRegion['americas']?.length > 0 && (
+            <>
+              <p className="text-xs text-muted-foreground mt-2">Americas</p>
+              {visibleByRegion['americas'].map(config => (
+                <p key={config.key} style={{ color: config.color }}>
+                  {config.name}: {actualValueMap[config.key].toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   {percentValueMap[config.key] !== 0 && (
                     <span className="text-xs text-muted-foreground ml-2">
                       ({percentValueMap[config.key] >= 0 ? '+' : ''}{percentValueMap[config.key].toFixed(2)}%)
@@ -186,7 +241,7 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
   const toggleRegion = (region: string) => {
     const regionIndices = INDEX_CONFIG.filter(c => c.region === region).map(c => c.key);
     const allVisible = regionIndices.every(key => visibleIndices.has(key));
-    
+
     setVisibleIndices(prev => {
       const newSet = new Set(prev);
       regionIndices.forEach(key => {
@@ -218,6 +273,13 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
   const baseNasdaq = findFirstValidBase('nasdaq');
   const baseFTSE100 = findFirstValidBase('ftse100');
   const baseHangSeng = findFirstValidBase('hangseng');
+  const baseNikkei225 = findFirstValidBase('nikkei225');
+  const baseTSX = findFirstValidBase('tsx');
+  const baseKLSE = findFirstValidBase('klse');
+  const baseCAC40 = findFirstValidBase('cac40');
+  const baseDAX = findFirstValidBase('dax');
+  const baseSTI = findFirstValidBase('sti');
+  const baseASX200 = findFirstValidBase('asx200');
 
   const chartData = data
     .filter((_, index) => index % 30 === 0 || index === data.length - 1)
@@ -235,6 +297,13 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
         Nasdaq: baseNasdaq > 0 && row.nasdaq > 0 ? Number(((row.nasdaq / baseNasdaq - 1) * 100).toFixed(2)) : null,
         FTSE100: baseFTSE100 > 0 && row.ftse100 > 0 ? Number(((row.ftse100 / baseFTSE100 - 1) * 100).toFixed(2)) : null,
         HangSeng: baseHangSeng > 0 && row.hangseng > 0 ? Number(((row.hangseng / baseHangSeng - 1) * 100).toFixed(2)) : null,
+        Nikkei225: baseNikkei225 > 0 && row.nikkei225 > 0 ? Number(((row.nikkei225 / baseNikkei225 - 1) * 100).toFixed(2)) : null,
+        TSX: baseTSX > 0 && row.tsx > 0 ? Number(((row.tsx / baseTSX - 1) * 100).toFixed(2)) : null,
+        KLSE: baseKLSE > 0 && row.klse > 0 ? Number(((row.klse / baseKLSE - 1) * 100).toFixed(2)) : null,
+        CAC40: baseCAC40 > 0 && row.cac40 > 0 ? Number(((row.cac40 / baseCAC40 - 1) * 100).toFixed(2)) : null,
+        DAX: baseDAX > 0 && row.dax > 0 ? Number(((row.dax / baseDAX - 1) * 100).toFixed(2)) : null,
+        STI: baseSTI > 0 && row.sti > 0 ? Number(((row.sti / baseSTI - 1) * 100).toFixed(2)) : null,
+        ASX200: baseASX200 > 0 && row.asx200 > 0 ? Number(((row.asx200 / baseASX200 - 1) * 100).toFixed(2)) : null,
         // Actual values for tooltip
         actualFund: row.shareValue,
         actualSHA: row.sha,
@@ -244,10 +313,17 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
         actualNasdaq: row.nasdaq,
         actualFTSE: row.ftse100,
         actualHangSeng: row.hangseng,
+        actualNikkei225: row.nikkei225,
+        actualTSX: row.tsx,
+        actualKLSE: row.klse,
+        actualCAC40: row.cac40,
+        actualDAX: row.dax,
+        actualSTI: row.sti,
+        actualASX200: row.asx200,
       };
     });
 
-  const regions = ['china', 'us', 'international'] as const;
+  const regions = ['china', 'us', 'europe', 'asia', 'americas'] as const;
 
   return (
     <Card className="col-span-full">
@@ -255,15 +331,15 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <CardTitle>Global Performance Comparison</CardTitle>
           <div className="flex gap-2">
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
               onClick={selectAll}
             >
               Select All
             </Badge>
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="cursor-pointer hover:bg-secondary transition-colors"
               onClick={selectNone}
             >
@@ -277,8 +353,8 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
         <div className="flex flex-wrap gap-6 p-4 bg-muted/30 rounded-lg">
           {/* Fund - Always visible */}
           <div className="flex items-center gap-2">
-            <div 
-              className="w-3 h-3 rounded-full" 
+            <div
+              className="w-3 h-3 rounded-full"
               style={{ backgroundColor: INDEX_CONFIG[0].color }}
             />
             <span className="text-sm font-semibold">Fund</span>
@@ -290,14 +366,14 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
             const regionIndices = INDEX_CONFIG.filter(c => c.region === region);
             const allVisible = regionIndices.every(c => visibleIndices.has(c.key));
             const someVisible = regionIndices.some(c => visibleIndices.has(c.key));
-            
+
             return (
               <div key={region} className="flex flex-col gap-2">
-                <div 
+                <div
                   className="flex items-center gap-2 cursor-pointer"
                   onClick={() => toggleRegion(region)}
                 >
-                  <Checkbox 
+                  <Checkbox
                     checked={allVisible}
                     className={someVisible && !allVisible ? "data-[state=checked]:bg-primary/50" : ""}
                   />
@@ -307,16 +383,16 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
                 </div>
                 <div className="flex flex-wrap gap-3 ml-4">
                   {regionIndices.map(config => (
-                    <label 
+                    <label
                       key={config.key}
                       className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 px-2 py-1 rounded transition-colors"
                     >
-                      <Checkbox 
+                      <Checkbox
                         checked={visibleIndices.has(config.key)}
                         onCheckedChange={() => toggleIndex(config.key)}
                       />
-                      <div 
-                        className="w-3 h-3 rounded-full" 
+                      <div
+                        className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: config.color }}
                       />
                       <span className="text-sm">{config.name}</span>
@@ -332,27 +408,27 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
         <ResponsiveContainer width="100%" height={500}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="date" 
+            <XAxis
+              dataKey="date"
               angle={-45}
               textAnchor="end"
               height={80}
             />
-            <YAxis 
-              label={{ value: 'Return (%)', angle: -90, position: 'insideLeft' }} 
+            <YAxis
+              label={{ value: 'Return (%)', angle: -90, position: 'insideLeft' }}
               domain={['auto', 'auto']}
             />
             <Tooltip content={<CustomTooltip visibleIndices={visibleIndices} />} />
             <Legend />
             {INDEX_CONFIG.map(config => (
               visibleIndices.has(config.key) && (
-                <Line 
+                <Line
                   key={config.key}
-                  type="monotone" 
-                  dataKey={config.key} 
-                  stroke={config.color} 
-                  strokeWidth={config.strokeWidth} 
-                  dot={false} 
+                  type="monotone"
+                  dataKey={config.key}
+                  stroke={config.color}
+                  strokeWidth={config.strokeWidth}
+                  dot={false}
                   name={config.name}
                   connectNulls={false}
                 />

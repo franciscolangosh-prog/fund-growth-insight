@@ -6,13 +6,20 @@ import { PortfolioData } from '@/utils/portfolioAnalysis';
 
 const BENCHMARK_INDICES = [
   { key: 'none', label: 'None' },
-  { key: 'csi300', label: 'CSI 300' },
-  { key: 'sp500', label: 'S&P 500' },
-  { key: 'nasdaq', label: 'NASDAQ' },
-  { key: 'ftse100', label: 'FTSE 100' },
-  { key: 'hangseng', label: 'Hang Seng' },
-  { key: 'sha', label: 'Shanghai A' },
-  { key: 'she', label: 'Shenzhen A' },
+  { key: 'csi300', label: 'CSI 300 (China)' },
+  { key: 'sp500', label: 'S&P 500 (USA)' },
+  { key: 'nasdaq', label: 'NASDAQ (USA)' },
+  { key: 'ftse100', label: 'FTSE 100 (UK)' },
+  { key: 'hangseng', label: 'Hang Seng (Hong Kong)' },
+  { key: 'sha', label: 'Shanghai (China)' },
+  { key: 'she', label: 'Shenzhen (China)' },
+  { key: 'nikkei225', label: 'Nikkei 225 (Japan)' },
+  { key: 'tsx', label: 'TSX (Canada)' },
+  { key: 'klse', label: 'KLSE (Malaysia)' },
+  { key: 'cac40', label: 'CAC 40 (France)' },
+  { key: 'dax', label: 'DAX (Germany)' },
+  { key: 'sti', label: 'STI (Singapore)' },
+  { key: 'asx200', label: 'ASX 200 (Australia)' },
 ] as const;
 
 type BenchmarkKey = typeof BENCHMARK_INDICES[number]['key'];
@@ -49,12 +56,12 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
     const monthlyData = new Map<string, { first: PortfolioData; last: PortfolioData }>();
     // Group data by year for simple annual return calculation
     const yearlyData = new Map<number, { first: PortfolioData; last: PortfolioData }>();
-    
+
     data.forEach(d => {
       const date = new Date(d.date);
       const year = date.getFullYear();
       const key = `${year}-${date.getMonth()}`;
-      
+
       if (!monthlyData.has(key)) {
         monthlyData.set(key, { first: d, last: d });
       } else {
@@ -98,8 +105,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
     // Calculate monthly averages across all years
     const monthStats = MONTHS.map((_, monthIdx) => {
       const monthReturns = returns.filter(r => r.month === monthIdx);
-      const avg = monthReturns.length > 0 
-        ? monthReturns.reduce((sum, r) => sum + r.return, 0) / monthReturns.length 
+      const avg = monthReturns.length > 0
+        ? monthReturns.reduce((sum, r) => sum + r.return, 0) / monthReturns.length
         : 0;
       const positiveCount = monthReturns.filter(r => r.return > 0).length;
       const winRate = monthReturns.length > 0 ? (positiveCount / monthReturns.length) * 100 : 0;
@@ -131,12 +138,12 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
 
     // Group data by year-quarter
     const quarterlyData = new Map<string, { first: PortfolioData; last: PortfolioData }>();
-    
+
     data.forEach(d => {
       const date = new Date(d.date);
       const quarter = Math.floor(date.getMonth() / 3) + 1;
       const key = `${date.getFullYear()}-${quarter}`;
-      
+
       if (!quarterlyData.has(key)) {
         quarterlyData.set(key, { first: d, last: d });
       } else {
@@ -162,8 +169,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
     // Calculate quarterly averages across all years
     const qStats = QUARTERS.map((_, quarterIdx) => {
       const quarterReturns = returns.filter(r => r.quarter === quarterIdx + 1);
-      const avg = quarterReturns.length > 0 
-        ? quarterReturns.reduce((sum, r) => sum + r.return, 0) / quarterReturns.length 
+      const avg = quarterReturns.length > 0
+        ? quarterReturns.reduce((sum, r) => sum + r.return, 0) / quarterReturns.length
         : 0;
       const positiveCount = quarterReturns.filter(r => r.return > 0).length;
       const winRate = quarterReturns.length > 0 ? (positiveCount / quarterReturns.length) * 100 : 0;
@@ -183,7 +190,7 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
 
   const getColorForReturn = (returnValue: number | undefined) => {
     if (returnValue === undefined) return 'bg-gray-100 dark:bg-gray-800';
-    
+
     if (returnValue >= 10) return 'bg-green-600 text-white';
     if (returnValue >= 5) return 'bg-green-500 text-white';
     if (returnValue >= 2) return 'bg-green-400';
@@ -198,7 +205,7 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
   const allMonthlyReturns = Array.from(heatmapData.entries())
     .map(([key, value]) => ({ key, value }))
     .sort((a, b) => b.value - a.value);
-  
+
   const bestMonth = allMonthlyReturns[0];
   const worstMonth = allMonthlyReturns[allMonthlyReturns.length - 1];
 
@@ -206,7 +213,7 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
   const allQuarterlyReturns = Array.from(quarterlyHeatmapData.entries())
     .map(([key, value]) => ({ key, value }))
     .sort((a, b) => b.value - a.value);
-  
+
   const bestQuarter = allQuarterlyReturns[0];
   const worstQuarter = allQuarterlyReturns[allQuarterlyReturns.length - 1];
 
@@ -217,36 +224,36 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
     }
 
     const benchmarkKey = selectedBenchmark as keyof PortfolioData;
-    
+
     // Group data by year-month for benchmark
     const monthlyData = new Map<string, { first: number; last: number }>();
     const quarterlyData = new Map<string, { first: number; last: number }>();
     const yearlyData = new Map<number, { first: number; last: number }>();
-    
+
     data.forEach(d => {
       const date = new Date(d.date);
       const year = date.getFullYear();
       const month = date.getMonth();
       const quarter = Math.floor(month / 3) + 1;
       const benchmarkValue = d[benchmarkKey] as number;
-      
+
       const monthKey = `${year}-${month}`;
       const quarterKey = `${year}-${quarter}`;
-      
+
       if (!monthlyData.has(monthKey)) {
         monthlyData.set(monthKey, { first: benchmarkValue, last: benchmarkValue });
       } else {
         const existing = monthlyData.get(monthKey)!;
         monthlyData.set(monthKey, { first: existing.first, last: benchmarkValue });
       }
-      
+
       if (!quarterlyData.has(quarterKey)) {
         quarterlyData.set(quarterKey, { first: benchmarkValue, last: benchmarkValue });
       } else {
         const existing = quarterlyData.get(quarterKey)!;
         quarterlyData.set(quarterKey, { first: existing.first, last: benchmarkValue });
       }
-      
+
       if (!yearlyData.has(year)) {
         yearlyData.set(year, { first: benchmarkValue, last: benchmarkValue });
       } else {
@@ -304,9 +311,9 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
       ? allBenchmarkAnnualReturns.reduce((sum, r) => sum + r, 0) / allBenchmarkAnnualReturns.length
       : 0;
 
-    return { 
-      benchmarkMonthlyData: benchmarkMonthly, 
-      benchmarkQuarterlyData: benchmarkQuarterly, 
+    return {
+      benchmarkMonthlyData: benchmarkMonthly,
+      benchmarkQuarterlyData: benchmarkQuarterly,
       benchmarkYearlyReturns: benchmarkYearly,
       benchmarkMonthlyAvg: benchmarkMonthAvg,
       benchmarkQuarterlyAvg: benchmarkQuarterAvg,
@@ -412,8 +419,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
                         {MONTHS.map((_, monthIdx) => {
                           const returnValue = heatmapData.get(`${year}-${monthIdx}`);
                           return (
-                            <td 
-                              key={monthIdx} 
+                            <td
+                              key={monthIdx}
                               className={`p-2 text-center text-xs font-medium rounded-sm ${getColorForReturn(returnValue)}`}
                               title={returnValue !== undefined ? `${MONTHS[monthIdx]} ${year}: ${returnValue.toFixed(2)}%` : 'No data'}
                             >
@@ -430,8 +437,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
                           {MONTHS.map((_, monthIdx) => {
                             const benchmarkValue = benchmarkMonthlyData.get(`${year}-${monthIdx}`);
                             return (
-                              <td 
-                                key={monthIdx} 
+                              <td
+                                key={monthIdx}
                                 className={`p-1 text-center text-xs font-medium rounded-sm ${getColorForReturn(benchmarkValue)}`}
                                 title={benchmarkValue !== undefined ? `${MONTHS[monthIdx]} ${year} ${getBenchmarkLabel()}: ${benchmarkValue.toFixed(2)}%` : 'No data'}
                               >
@@ -451,8 +458,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
                 <tr className="border-t-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
                   <td className="p-2 font-semibold text-muted-foreground">Average</td>
                   {monthlyAvgRow?.map((avgValue, monthIdx) => (
-                    <td 
-                      key={monthIdx} 
+                    <td
+                      key={monthIdx}
                       className={`p-2 text-center text-xs font-medium rounded-sm ${getColorForReturn(avgValue)}`}
                       title={avgValue !== undefined ? `${MONTHS[monthIdx]} Avg: ${avgValue.toFixed(2)}%` : 'No data'}
                     >
@@ -468,8 +475,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
                   <tr className="border-t bg-blue-50 dark:bg-blue-950/30">
                     <td className="p-2 font-semibold text-blue-600 dark:text-blue-400">{getBenchmarkLabel()}</td>
                     {benchmarkMonthlyAvg.map((avgValue, monthIdx) => (
-                      <td 
-                        key={monthIdx} 
+                      <td
+                        key={monthIdx}
                         className={`p-2 text-center text-xs font-medium rounded-sm ${getColorForReturn(avgValue)}`}
                         title={avgValue !== undefined ? `${MONTHS[monthIdx]} ${getBenchmarkLabel()} Avg: ${avgValue.toFixed(2)}%` : 'No data'}
                       >
@@ -512,8 +519,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
                         {QUARTERS.map((quarter, quarterIdx) => {
                           const returnValue = quarterlyHeatmapData.get(`${year}-${quarterIdx + 1}`);
                           return (
-                            <td 
-                              key={quarterIdx} 
+                            <td
+                              key={quarterIdx}
                               className={`p-2 text-center text-sm font-medium rounded-sm ${getColorForReturn(returnValue)}`}
                               title={returnValue !== undefined ? `${quarter} ${year}: ${returnValue.toFixed(2)}%` : 'No data'}
                             >
@@ -530,8 +537,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
                           {QUARTERS.map((quarter, quarterIdx) => {
                             const benchmarkValue = benchmarkQuarterlyData.get(`${year}-${quarterIdx + 1}`);
                             return (
-                              <td 
-                                key={quarterIdx} 
+                              <td
+                                key={quarterIdx}
                                 className={`p-1 text-center text-sm font-medium rounded-sm ${getColorForReturn(benchmarkValue)}`}
                                 title={benchmarkValue !== undefined ? `${quarter} ${year} ${getBenchmarkLabel()}: ${benchmarkValue.toFixed(2)}%` : 'No data'}
                               >
@@ -551,8 +558,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
                 <tr className="border-t-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
                   <td className="p-2 font-semibold text-muted-foreground">Average</td>
                   {quarterlyAvgRow?.map((avgValue, quarterIdx) => (
-                    <td 
-                      key={quarterIdx} 
+                    <td
+                      key={quarterIdx}
                       className={`p-2 text-center text-sm font-medium rounded-sm ${getColorForReturn(avgValue)}`}
                       title={avgValue !== undefined ? `${QUARTERS[quarterIdx]} Avg: ${avgValue.toFixed(2)}%` : 'No data'}
                     >
@@ -568,8 +575,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
                   <tr className="border-t bg-blue-50 dark:bg-blue-950/30">
                     <td className="p-2 font-semibold text-blue-600 dark:text-blue-400">{getBenchmarkLabel()}</td>
                     {benchmarkQuarterlyAvg.map((avgValue, quarterIdx) => (
-                      <td 
-                        key={quarterIdx} 
+                      <td
+                        key={quarterIdx}
                         className={`p-2 text-center text-sm font-medium rounded-sm ${getColorForReturn(avgValue)}`}
                         title={avgValue !== undefined ? `${QUARTERS[quarterIdx]} ${getBenchmarkLabel()} Avg: ${avgValue.toFixed(2)}%` : 'No data'}
                       >
@@ -592,8 +599,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
             <h4 className="font-semibold mb-3">Monthly Averages (All Years)</h4>
             <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2">
               {monthlyStats.map((stat, idx) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   className={`p-2 rounded-lg text-center ${stat.avg >= 0 ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}
                 >
                   <p className="text-xs font-semibold">{stat.month}</p>
@@ -612,8 +619,8 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
             <h4 className="font-semibold mb-3">Quarterly Averages (All Years)</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {quarterlyStats.map((stat, idx) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   className={`p-4 rounded-lg text-center ${stat.avg >= 0 ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}
                 >
                   <p className="text-sm font-semibold">{stat.quarter}</p>
@@ -681,7 +688,7 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
                 .map((s, i) => ({ ...s, idx: i }))
                 .sort((a, b) => a.avg - b.avg)
                 .slice(0, 3);
-              
+
               return `Historically strongest months: ${bestMonths.map(m => m.month).join(', ')}. 
                       Weakest months: ${worstMonths.map(m => m.month).join(', ')}.`;
             })()
@@ -693,7 +700,7 @@ export function MonthlyReturnsHeatmap({ data }: MonthlyReturnsHeatmapProps) {
               const worstQuarters = quarterlyStats
                 .sort((a, b) => a.avg - b.avg)
                 .slice(0, 2);
-              
+
               return `Historically strongest quarters: ${bestQuarters.map(q => q.quarter).join(', ')} (avg ${bestQuarters[0]?.avg.toFixed(1)}%). 
                       Weakest quarters: ${worstQuarters.map(q => q.quarter).join(', ')} (avg ${worstQuarters[0]?.avg.toFixed(1)}%).`;
             })()

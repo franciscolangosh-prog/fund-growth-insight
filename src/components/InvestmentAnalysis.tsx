@@ -17,20 +17,27 @@ interface InvestmentAnalysisProps {
     nasdaq?: number;
     ftse100?: number;
     hangseng?: number;
+    nikkei225?: number;
+    tsx?: number;
+    klse?: number;
+    cac40?: number;
+    dax?: number;
+    sti?: number;
+    asx200?: number;
   };
   outperformance: number;
 }
 
-export function InvestmentAnalysis({ 
-  annualizedReturn, 
-  totalReturn, 
+export function InvestmentAnalysis({
+  annualizedReturn,
+  totalReturn,
   correlations,
   benchmarkReturns,
   globalIndices,
-  outperformance 
+  outperformance
 }: InvestmentAnalysisProps) {
   const avgCorrelation = (correlations.sha + correlations.she + correlations.csi300) / 3;
-  
+
   const getRecommendation = () => {
     // Funds that consistently beat the market may have lower correlation
     // Focus more on absolute returns rather than correlation
@@ -80,9 +87,9 @@ export function InvestmentAnalysis({
             {recommendation.verdict}
           </Badge>
         </div>
-        
+
         <p className="text-sm text-muted-foreground">{recommendation.description}</p>
-        
+
         <div className="space-y-2 pt-4 border-t">
           <h4 className="font-semibold text-sm">Fund Performance:</h4>
           <ul className="text-sm space-y-1 text-muted-foreground">
@@ -131,9 +138,58 @@ export function InvestmentAnalysis({
                 </li>
               )}
               {globalIndices.hangseng !== undefined && globalIndices.hangseng !== 0 && (
-                <li>• Hang Seng (HK): <span className="font-semibold text-foreground">{globalIndices.hangseng.toFixed(2)}%</span>
+                <li>• Hang Seng (Hong Kong): <span className="font-semibold text-foreground">{globalIndices.hangseng.toFixed(2)}%</span>
                   <span className={`ml-2 font-semibold ${annualizedReturn > globalIndices.hangseng ? 'text-green-600' : 'text-red-600'}`}>
                     ({annualizedReturn > globalIndices.hangseng ? '+' : ''}{(annualizedReturn - globalIndices.hangseng).toFixed(2)}% vs fund)
+                  </span>
+                </li>
+              )}
+              {globalIndices.nikkei225 !== undefined && globalIndices.nikkei225 !== 0 && (
+                <li>• Nikkei 225 (Japan): <span className="font-semibold text-foreground">{globalIndices.nikkei225.toFixed(2)}%</span>
+                  <span className={`ml-2 font-semibold ${annualizedReturn > globalIndices.nikkei225 ? 'text-green-600' : 'text-red-600'}`}>
+                    ({annualizedReturn > globalIndices.nikkei225 ? '+' : ''}{(annualizedReturn - globalIndices.nikkei225).toFixed(2)}% vs fund)
+                  </span>
+                </li>
+              )}
+              {globalIndices.tsx !== undefined && globalIndices.tsx !== 0 && (
+                <li>• TSX Composite (Canada): <span className="font-semibold text-foreground">{globalIndices.tsx.toFixed(2)}%</span>
+                  <span className={`ml-2 font-semibold ${annualizedReturn > globalIndices.tsx ? 'text-green-600' : 'text-red-600'}`}>
+                    ({annualizedReturn > globalIndices.tsx ? '+' : ''}{(annualizedReturn - globalIndices.tsx).toFixed(2)}% vs fund)
+                  </span>
+                </li>
+              )}
+              {globalIndices.klse !== undefined && globalIndices.klse !== 0 && (
+                <li>• KLSE (Malaysia): <span className="font-semibold text-foreground">{globalIndices.klse.toFixed(2)}%</span>
+                  <span className={`ml-2 font-semibold ${annualizedReturn > globalIndices.klse ? 'text-green-600' : 'text-red-600'}`}>
+                    ({annualizedReturn > globalIndices.klse ? '+' : ''}{(annualizedReturn - globalIndices.klse).toFixed(2)}% vs fund)
+                  </span>
+                </li>
+              )}
+              {globalIndices.cac40 !== undefined && globalIndices.cac40 !== 0 && (
+                <li>• CAC 40 (France): <span className="font-semibold text-foreground">{globalIndices.cac40.toFixed(2)}%</span>
+                  <span className={`ml-2 font-semibold ${annualizedReturn > globalIndices.cac40 ? 'text-green-600' : 'text-red-600'}`}>
+                    ({annualizedReturn > globalIndices.cac40 ? '+' : ''}{(annualizedReturn - globalIndices.cac40).toFixed(2)}% vs fund)
+                  </span>
+                </li>
+              )}
+              {globalIndices.dax !== undefined && globalIndices.dax !== 0 && (
+                <li>• DAX (Germany): <span className="font-semibold text-foreground">{globalIndices.dax.toFixed(2)}%</span>
+                  <span className={`ml-2 font-semibold ${annualizedReturn > globalIndices.dax ? 'text-green-600' : 'text-red-600'}`}>
+                    ({annualizedReturn > globalIndices.dax ? '+' : ''}{(annualizedReturn - globalIndices.dax).toFixed(2)}% vs fund)
+                  </span>
+                </li>
+              )}
+              {globalIndices.sti !== undefined && globalIndices.sti !== 0 && (
+                <li>• STI (Singapore): <span className="font-semibold text-foreground">{globalIndices.sti.toFixed(2)}%</span>
+                  <span className={`ml-2 font-semibold ${annualizedReturn > globalIndices.sti ? 'text-green-600' : 'text-red-600'}`}>
+                    ({annualizedReturn > globalIndices.sti ? '+' : ''}{(annualizedReturn - globalIndices.sti).toFixed(2)}% vs fund)
+                  </span>
+                </li>
+              )}
+              {globalIndices.asx200 !== undefined && globalIndices.asx200 !== 0 && (
+                <li>• ASX 200 (Australia): <span className="font-semibold text-foreground">{globalIndices.asx200.toFixed(2)}%</span>
+                  <span className={`ml-2 font-semibold ${annualizedReturn > globalIndices.asx200 ? 'text-green-600' : 'text-red-600'}`}>
+                    ({annualizedReturn > globalIndices.asx200 ? '+' : ''}{(annualizedReturn - globalIndices.asx200).toFixed(2)}% vs fund)
                   </span>
                 </li>
               )}
