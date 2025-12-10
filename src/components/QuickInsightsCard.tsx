@@ -316,11 +316,14 @@ export function QuickInsightsCard({ data, annualReturns }: QuickInsightsCardProp
           {recovery.drawdownPeriods.length > 0 && (
             <div className="mt-2">
               <p className="text-xs font-medium mb-1">Significant Drawdown Periods ({recovery.drawdownPeriods.length})</p>
-              <div className="max-h-32 overflow-y-auto space-y-1">
-                {recovery.drawdownPeriods.slice(0, 5).map((period, idx) => (
+              <div className="max-h-64 overflow-y-auto space-y-1">
+                {[...recovery.drawdownPeriods]
+                  .sort((a, b) => b.drawdown - a.drawdown)
+                  .slice(0, 15)
+                  .map((period, idx) => (
                   <div key={idx} className="flex items-center justify-between text-xs p-2 bg-muted/30 rounded">
                     <span className="text-muted-foreground">
-                      {new Date(period.startDate).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                      {new Date(period.startDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).replace(' ', ', ')}
                     </span>
                     <span className="text-red-600 font-medium">-{period.drawdown.toFixed(1)}%</span>
                     <span className={period.recoveryDays ? "text-green-600" : "text-yellow-600"}>
