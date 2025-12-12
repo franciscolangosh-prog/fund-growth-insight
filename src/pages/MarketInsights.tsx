@@ -582,7 +582,7 @@ const MarketInsights = () => {
                         <Tooltip
                           formatter={(value: number, name: string) => [
                             `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-                            name === 'invested' ? 'Total Invested' : 'Portfolio Value'
+                            name
                           ]}
                           labelFormatter={(label) => `Date: ${label}`}
                         />
