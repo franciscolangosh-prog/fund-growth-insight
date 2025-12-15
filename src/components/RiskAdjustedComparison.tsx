@@ -106,7 +106,8 @@ export function RiskAdjustedComparison({ data }: RiskAdjustedComparisonProps) {
     return results;
   }, [data]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  type RechartsTooltipPayload<T> = Array<{ payload: T }>;
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: RechartsTooltipPayload<RiskMetrics> }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (

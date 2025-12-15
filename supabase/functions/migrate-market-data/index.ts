@@ -20,7 +20,17 @@ Deno.serve(async (req) => {
     console.log('Starting market data migration...');
 
     // Fetch ALL records from portfolio_data with pagination
-    let allPortfolioData: any[] = [];
+    type PortfolioMarketRow = {
+      date: string;
+      sha: number | null;
+      she: number | null;
+      csi300: number | null;
+      sp500: number | null;
+      nasdaq: number | null;
+      ftse100: number | null;
+      hangseng: number | null;
+    };
+    let allPortfolioData: PortfolioMarketRow[] = [];
     let page = 0;
     const pageSize = 1000;
     let hasMore = true;
@@ -50,7 +60,7 @@ Deno.serve(async (req) => {
     console.log(`Found ${allPortfolioData.length} total portfolio records`);
 
     // Group by date and take the most recent values for each date
-    const marketDataByDate = new Map();
+    const marketDataByDate = new Map<string, PortfolioMarketRow>();
     
     for (const record of allPortfolioData) {
       const dateKey = record.date;

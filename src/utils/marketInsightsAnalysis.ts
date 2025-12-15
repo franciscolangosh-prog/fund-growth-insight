@@ -86,7 +86,7 @@ export interface BestWorstDaysImpact {
 export async function fetchAllMarketData(): Promise<MarketDataPoint[]> {
   const PAGE_SIZE = 1000;
   let from = 0;
-  let allData: MarketDataPoint[] = [];
+  const allData: MarketDataPoint[] = [];
 
   while (true) {
     const { data, error } = await supabase

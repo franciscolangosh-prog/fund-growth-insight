@@ -28,11 +28,12 @@ import {
   loadPortfolioFromDatabase,
   listPortfolios,
 } from "@/utils/portfolioDatabase";
+import type { Tables } from "@/integrations/supabase/types";
 
 const Analysis = () => {
   const [data, setData] = useState<PortfolioData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [portfolios, setPortfolios] = useState<any[]>([]);
+  const [portfolios, setPortfolios] = useState<Array<Pick<Tables<"portfolios">, "id" | "name" | "created_at">>>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
 
   const loadPortfoliosList = async () => {
