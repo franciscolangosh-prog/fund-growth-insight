@@ -151,6 +151,7 @@ const MarketInsights = () => {
       .map(([year, value]) => ({
         year,
         normalized: (value / baseValue) * 100,
+        actual: value,
       }));
   }, [data, selectedIndex]);
 
@@ -996,8 +997,34 @@ const MarketInsights = () => {
                         <XAxis dataKey="year" />
                         <YAxis tickFormatter={(v) => `${v.toFixed(0)}`} />
                         <Tooltip
-                          formatter={(value: number) => [`${value.toFixed(2)}`, "Index Level (1990 = 100)"]}
-                          labelFormatter={(label) => `Year: ${label}`}
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload?.length) return null;
+                            const p = payload[0]?.payload as { normalized?: number; actual?: number } | undefined;
+                            const normalized = typeof p?.normalized === "number" ? p.normalized : undefined;
+                            const actual = typeof p?.actual === "number" ? p.actual : undefined;
+
+                            return (
+                              <div className="rounded-lg border bg-background p-3 shadow-sm">
+                                <div className="text-sm font-medium mb-1">{`Year: ${label}`}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <span>Index Level (1990 = 100)</span>
+                                    <span className="font-medium text-foreground">
+                                      {normalized !== undefined ? normalized.toFixed(2) : "—"}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-4">
+                                    <span>Actual Index Value</span>
+                                    <span className="font-medium text-foreground">
+                                      {actual !== undefined
+                                        ? actual.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                                        : "—"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }}
                         />
                         <Legend />
                         <Line
