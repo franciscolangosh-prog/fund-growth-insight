@@ -944,6 +944,32 @@ const MarketInsights = () => {
                     </ResponsiveContainer>
                   </div>
 
+                  {/* Smoothed Line Chart (Trend) */}
+                  <div className="h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsLineChart data={yearlyReturns}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="year" />
+                        <YAxis tickFormatter={(v) => `${v}%`} />
+                        <Tooltip
+                          formatter={(value: number) => [`${value.toFixed(2)}%`, "Return"]}
+                          labelFormatter={(label) => `Year: ${label}`}
+                        />
+                        <Legend />
+                        <ReferenceLine y={0} stroke="#666" />
+                        <Line
+                          type="monotone"
+                          dataKey={selectedIndex}
+                          name={`${selectedIndexConfig?.label} (Smoothed)`}
+                          stroke={selectedIndexConfig?.color}
+                          strokeWidth={3}
+                          dot={false}
+                          connectNulls
+                        />
+                      </RechartsLineChart>
+                    </ResponsiveContainer>
+                  </div>
+
                   {/* Stats Summary */}
                   <div className="grid gap-4 md:grid-cols-4">
                     <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4">
