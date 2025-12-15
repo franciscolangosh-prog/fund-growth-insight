@@ -165,14 +165,28 @@ export function DataMigrationPanel() {
       };
       
       // Parse each index value
-      const indexKeys = ['sha', 'she', 'csi300', 'sp500', 'nasdaq', 'ftse100', 'hangseng', 
-                         'nikkei225', 'tsx', 'klse', 'cac40', 'dax', 'sti', 'asx200'] as const;
+      const indexKeys: Array<keyof Omit<ParsedMarketData, "date">> = [
+        "sha",
+        "she",
+        "csi300",
+        "sp500",
+        "nasdaq",
+        "ftse100",
+        "hangseng",
+        "nikkei225",
+        "tsx",
+        "klse",
+        "cac40",
+        "dax",
+        "sti",
+        "asx200",
+      ];
       
       for (const key of indexKeys) {
         if (colMap[key] !== undefined) {
           const val = parseFloat(values[colMap[key]]);
           if (!isNaN(val) && val > 0) {
-            (record as any)[key] = val;
+            record[key] = val;
           }
         }
       }

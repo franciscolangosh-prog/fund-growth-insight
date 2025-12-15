@@ -18,7 +18,6 @@ import { RecordFormDialog } from "@/components/RecordFormDialog";
 import { getRecordsByDateRange, updatePortfolioRecord, addPortfolioRecord, loadPortfolioFromDatabase } from "@/utils/portfolioDatabase";
 import { convertToShareValue, UserPortfolioInput } from "@/utils/portfolioAnalysis";
 import { toast } from "sonner";
-import type { Tables } from "@/integrations/supabase/types";
 
 interface RecordData {
   id?: string;
@@ -54,7 +53,7 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
           id: d.id,
           date: new Date(d.date),
           principle: Number(d.principle),
-          marketValue: Number((d as any).market_value) || Number(d.principle),
+          marketValue: Number(d.market_value) || Number(d.principle),
         })));
       }
     };
@@ -113,7 +112,7 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
             id: d.id,
             date: new Date(d.date),
             principle: Number(d.principle),
-            marketValue: Number((d as any).market_value) || Number(d.principle),
+            marketValue: Number(d.market_value) || Number(d.principle),
           })));
         }
         onRecordSaved();
@@ -139,7 +138,7 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
             id: d.id,
             date: new Date(d.date),
             principle: Number(d.principle),
-            marketValue: Number((d as any).market_value) || Number(d.principle),
+            marketValue: Number(d.market_value) || Number(d.principle),
           })));
         }
         onRecordSaved();
@@ -263,4 +262,3 @@ export function RecordsEditorDialog({ portfolioId, onRecordSaved }: RecordsEdito
     </Dialog>
   );
 }
-''

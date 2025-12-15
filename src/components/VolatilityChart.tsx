@@ -21,6 +21,13 @@ export function VolatilityChart({ data }: VolatilityChartProps) {
     '90D': 90,
   };
 
+  type VolatilityPoint = {
+    date: string;
+    fund: number;
+    csi300: number;
+    sp500?: number;
+  };
+
   const { chartData, stats } = useMemo(() => {
     const days = windowDays[window];
     
@@ -64,12 +71,7 @@ export function VolatilityChart({ data }: VolatilityChartProps) {
     const csi300Vol = calculateRollingVolatility(csi300Values, days);
     const sp500Vol = calculateRollingVolatility(sp500Values, days);
 
-    const chartPoints: Array<{
-      date: string;
-      fund: number;
-      csi300: number;
-      sp500?: number;
-    }> = [];
+    const chartPoints: VolatilityPoint[] = [];
 
     for (let i = 0; i < fundVol.length; i += 7) {
       const dataIndex = i + days;
@@ -111,7 +113,8 @@ export function VolatilityChart({ data }: VolatilityChartProps) {
     };
   }, [data, window]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  type RechartsTooltipPayload<T> = Array<{ payload: T }>;
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: RechartsTooltipPayload<VolatilityPoint> }) => {
     if (active && payload && payload.length) {
       const point = payload[0].payload;
       return (

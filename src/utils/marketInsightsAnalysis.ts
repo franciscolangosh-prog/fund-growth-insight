@@ -73,6 +73,11 @@ export interface BestWorstDaysImpact {
   finalValue: number;
   annualizedReturn: number;
   missedDays: number;
+  missedDaysList?: Array<{
+    date: string;
+    dailyReturn: number; // decimal, e.g. 0.0123 = +1.23%
+    indexValue: number;
+  }>;
 }
 
 /**
@@ -81,7 +86,7 @@ export interface BestWorstDaysImpact {
 export async function fetchAllMarketData(): Promise<MarketDataPoint[]> {
   const PAGE_SIZE = 1000;
   let from = 0;
-  let allData: MarketDataPoint[] = [];
+  const allData: MarketDataPoint[] = [];
 
   while (true) {
     const { data, error } = await supabase
@@ -435,14 +440,14 @@ export function calculateMissingDaysImpact(
   }
 
   // Calculate daily returns only for valid data range
-  const dailyReturns: Array<{ date: string; return: number; value: number }> = [];
+  const dailyReturns: Array<{ date: string; dailyReturn: number; value: number }> = [];
   for (let i = firstValidIndex + 1; i <= lastValidIndex; i++) {
     const prevValue = data[i - 1][indexKey] as number;
     const currValue = data[i][indexKey] as number;
     if (prevValue > 0 && currValue > 0) {
       dailyReturns.push({
         date: data[i].date,
-        return: (currValue - prevValue) / prevValue,
+        dailyReturn: (currValue - prevValue) / prevValue,
         value: currValue,
       });
     }
@@ -451,7 +456,7 @@ export function calculateMissingDaysImpact(
   if (dailyReturns.length < 5) return []; // Need at least some data
 
   // Sort by return to find best/worst days
-  const sortedByReturn = [...dailyReturns].sort((a, b) => b.return - a.return);
+  const sortedByReturn = [...dailyReturns].sort((a, b) => b.dailyReturn - a.dailyReturn);
 
   const initialInvestment = 10000;
   const startDate = data[firstValidIndex].date;
@@ -473,18 +478,24 @@ export function calculateMissingDaysImpact(
     finalValue: fullyInvestedFinal,
     annualizedReturn: (Math.pow(endValue / startValue, 1 / years) - 1) * 100,
     missedDays: 0,
+    missedDaysList: [],
   });
 
   // Missing best N days scenarios
   [5, 10, 20, 30, 40].forEach(n => {
     if (n > sortedByReturn.length) return;
 
-    const bestDays = new Set(sortedByReturn.slice(0, n).map(d => d.date));
+    const missedDaysList = sortedByReturn.slice(0, n).map(d => ({
+      date: d.date,
+      dailyReturn: d.dailyReturn,
+      indexValue: d.value,
+    }));
+    const bestDays = new Set(missedDaysList.map(d => d.date));
     let value = initialInvestment;
 
     for (const day of dailyReturns) {
       if (!bestDays.has(day.date)) {
-        value *= (1 + day.return);
+        value *= (1 + day.dailyReturn);
       }
     }
 
@@ -495,6 +506,7 @@ export function calculateMissingDaysImpact(
       finalValue: value,
       annualizedReturn: annualized,
       missedDays: n,
+      missedDaysList,
     });
   });
 

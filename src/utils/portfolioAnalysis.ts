@@ -218,7 +218,7 @@ export function parseCSV(csvText: string): ParseCSVResult {
     // Parse old format (includes market indices)
     // Header: Date,SHA,SHE,CSI300,Share,Share_V,Gain_Loss,DailyGain,Market_Value,Principle,SP500,Nasdaq,FTSE100,HangSeng
     const parsedData: PortfolioData[] = [];
-    let lastValues = {
+    const lastValues = {
       sp500: 0,
       nasdaq: 0,
       ftse100: 0,
@@ -337,30 +337,36 @@ export function parseCSV(csvText: string): ParseCSVResult {
   }
 }
 
-export function parsePortfolioData(data: any[]): PortfolioData[] {
-  return data.slice(1).map(row => ({
-    date: row[0],
-    shareValue: parseFloat(row[1]) || 0,
-    sha: parseFloat(row[2]) || 0,
-    she: parseFloat(row[3]) || 0,
-    csi300: parseFloat(row[4]) || 0,
-    shares: parseFloat(row[5]) || 0,
-    gainLoss: parseFloat(row[6]) || 0,
-    dailyGain: parseFloat(row[7]) || 0,
-    marketValue: parseFloat(row[8]) || 0,
-    principle: parseFloat(row[9]) || 0,
-    sp500: parseFloat(row[10]) || 0,
-    nasdaq: parseFloat(row[11]) || 0,
-    ftse100: parseFloat(row[12]) || 0,
-    hangseng: parseFloat(row[13]) || 0,
-    nikkei225: 0,
-    tsx: 0,
-    klse: 0,
-    cac40: 0,
-    dax: 0,
-    sti: 0,
-    asx200: 0,
-  })).filter(row => row.shareValue > 0);
+export function parsePortfolioData(data: unknown[]): PortfolioData[] {
+  type ParsedRow = Array<string | number | null | undefined>;
+  const rows = data as ParsedRow[];
+
+  return rows
+    .slice(1)
+    .map((row) => ({
+      date: String(row[0] ?? ""),
+      shareValue: parseFloat(String(row[1] ?? "")) || 0,
+      sha: parseFloat(String(row[2] ?? "")) || 0,
+      she: parseFloat(String(row[3] ?? "")) || 0,
+      csi300: parseFloat(String(row[4] ?? "")) || 0,
+      shares: parseFloat(String(row[5] ?? "")) || 0,
+      gainLoss: parseFloat(String(row[6] ?? "")) || 0,
+      dailyGain: parseFloat(String(row[7] ?? "")) || 0,
+      marketValue: parseFloat(String(row[8] ?? "")) || 0,
+      principle: parseFloat(String(row[9] ?? "")) || 0,
+      sp500: parseFloat(String(row[10] ?? "")) || 0,
+      nasdaq: parseFloat(String(row[11] ?? "")) || 0,
+      ftse100: parseFloat(String(row[12] ?? "")) || 0,
+      hangseng: parseFloat(String(row[13] ?? "")) || 0,
+      nikkei225: 0,
+      tsx: 0,
+      klse: 0,
+      cac40: 0,
+      dax: 0,
+      sti: 0,
+      asx200: 0,
+    }))
+    .filter((row) => row.shareValue > 0);
 }
 
 export function calculateCorrelation(values1: number[], values2: number[]): number {

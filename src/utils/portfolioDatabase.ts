@@ -187,8 +187,8 @@ export const loadPortfolioFromDatabase = async (
     return allEntries.map((entry, index) => {
       const principle = Number(entry.principle) || 0;
       const shareValue = Number(entry.share_value) || 0;
-      const shares = Number((entry as any).shares) || (shareValue > 0 ? principle / shareValue : 0);
-      const marketValue = Number((entry as any).market_value) || shares * shareValue;
+      const shares = Number(entry.shares) || (shareValue > 0 ? principle / shareValue : 0);
+      const marketValue = Number(entry.market_value) || shares * shareValue;
       const gainLoss = marketValue - principle;
 
       // Calculate daily gain

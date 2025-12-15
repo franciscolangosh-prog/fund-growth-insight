@@ -77,7 +77,8 @@ export function DrawdownChart({ data }: DrawdownChartProps) {
     };
   }, [data]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  type RechartsTooltipPayload<T> = Array<{ payload: T }>;
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: RechartsTooltipPayload<DrawdownDataPoint> }) => {
     if (active && payload && payload.length) {
       const point = payload[0].payload;
       return (

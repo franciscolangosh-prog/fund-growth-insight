@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     const marketData: MarketData = await fetchMarketDataFromAPIs(targetDate);
 
     // Only include fields that have actual values (not undefined)
-    const dataToUpsert: Record<string, any> = { date: targetDate };
+    const dataToUpsert: Record<string, unknown> = { date: targetDate };
     Object.entries(marketData).forEach(([key, value]) => {
       if (key !== 'date' && value !== undefined) {
         dataToUpsert[key] = value;

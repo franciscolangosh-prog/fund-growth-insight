@@ -11,9 +11,15 @@ interface PerformanceChartProps {
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: any[];
+  payload?: Array<{ payload: PerformanceTooltipPoint }>;
   visibleIndices?: Set<string>;
 }
+
+type PerformanceTooltipPoint = {
+  date: string;
+  originalDate?: string;
+  [key: string]: string | number | null | undefined;
+};
 
 interface IndexConfig {
   key: string;
@@ -76,21 +82,21 @@ const CustomTooltip = ({ active, payload, visibleIndices }: CustomTooltipProps) 
     const formattedDate = dataPoint.originalDate ? formatDate(dataPoint.originalDate) : dataPoint.date;
 
     const actualValueMap: Record<string, number> = {
-      Fund: dataPoint.actualFund,
-      SHA: dataPoint.actualSHA,
-      SHE: dataPoint.actualSHE,
-      CSI300: dataPoint.actualCSI,
-      SP500: dataPoint.actualSP500,
-      Nasdaq: dataPoint.actualNasdaq,
-      FTSE100: dataPoint.actualFTSE,
-      HangSeng: dataPoint.actualHangSeng,
-      Nikkei225: dataPoint.actualNikkei225,
-      TSX: dataPoint.actualTSX,
-      KLSE: dataPoint.actualKLSE,
-      CAC40: dataPoint.actualCAC40,
-      DAX: dataPoint.actualDAX,
-      STI: dataPoint.actualSTI,
-      ASX200: dataPoint.actualASX200,
+      Fund: Number(dataPoint.actualFund) || 0,
+      SHA: Number(dataPoint.actualSHA) || 0,
+      SHE: Number(dataPoint.actualSHE) || 0,
+      CSI300: Number(dataPoint.actualCSI) || 0,
+      SP500: Number(dataPoint.actualSP500) || 0,
+      Nasdaq: Number(dataPoint.actualNasdaq) || 0,
+      FTSE100: Number(dataPoint.actualFTSE) || 0,
+      HangSeng: Number(dataPoint.actualHangSeng) || 0,
+      Nikkei225: Number(dataPoint.actualNikkei225) || 0,
+      TSX: Number(dataPoint.actualTSX) || 0,
+      KLSE: Number(dataPoint.actualKLSE) || 0,
+      CAC40: Number(dataPoint.actualCAC40) || 0,
+      DAX: Number(dataPoint.actualDAX) || 0,
+      STI: Number(dataPoint.actualSTI) || 0,
+      ASX200: Number(dataPoint.actualASX200) || 0,
     };
 
     const percentValueMap: Record<string, number> = {

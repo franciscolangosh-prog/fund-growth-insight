@@ -20,6 +20,13 @@ export function RollingReturnsChart({ data }: RollingReturnsChartProps) {
     '8Y': 252 * 8,
   };
 
+  type RollingPoint = {
+    date: string;
+    fundReturn: number;
+    csi300Return: number;
+    sp500Return?: number;
+  };
+
   const { chartData, stats } = useMemo(() => {
     const days = periodDays[selectedPeriod];
     
@@ -30,12 +37,7 @@ export function RollingReturnsChart({ data }: RollingReturnsChartProps) {
       };
     }
 
-    const rollingData: Array<{
-      date: string;
-      fundReturn: number;
-      csi300Return: number;
-      sp500Return?: number;
-    }> = [];
+    const rollingData: RollingPoint[] = [];
 
     let minReturn = Infinity;
     let maxReturn = -Infinity;
@@ -125,7 +127,8 @@ export function RollingReturnsChart({ data }: RollingReturnsChartProps) {
     };
   }, [data, selectedPeriod]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  type RechartsTooltipPayload<T> = Array<{ payload: T }>;
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: RechartsTooltipPayload<RollingPoint> }) => {
     if (active && payload && payload.length) {
       const point = payload[0].payload;
       return (
