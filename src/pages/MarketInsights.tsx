@@ -109,6 +109,50 @@ const MarketInsights = () => {
     [data, selectedIndex]
   );
   const yearlyReturns = useMemo(() => calculateYearlyReturns(data), [data]);
+  const normalizedIndexLevels = useMemo(() => {
+    if (data.length === 0) return [];
+
+    const indexKey = selectedIndex as keyof Omit<MarketDataPoint, "date">;
+
+    // Find baseline value in year 1990 (first valid trading day), fallback to first valid overall.
+    let baseValue = 0;
+    for (const p of data) {
+      if (p.date.startsWith("1990")) {
+        const v = p[indexKey] as number;
+        if (v > 0) {
+          baseValue = v;
+          break;
+        }
+      }
+    }
+    if (baseValue <= 0) {
+      for (const p of data) {
+        const v = p[indexKey] as number;
+        if (v > 0) {
+          baseValue = v;
+          break;
+        }
+      }
+    }
+    if (baseValue <= 0) return [];
+
+    // Use each year's last valid index value as the "position" for that year.
+    const yearEnd: Map<number, number> = new Map();
+    for (const p of data) {
+      const v = p[indexKey] as number;
+      if (v > 0) {
+        const year = parseInt(p.date.substring(0, 4), 10);
+        yearEnd.set(year, v);
+      }
+    }
+
+    return Array.from(yearEnd.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([year, value]) => ({
+        year,
+        normalized: (value / baseValue) * 100,
+      }));
+  }, [data, selectedIndex]);
 
   const selectedIndexConfig = INDEX_OPTIONS.find(i => i.value === selectedIndex);
   const openMissingDaysList = (scenario: BestWorstDaysImpact) => {
@@ -944,23 +988,22 @@ const MarketInsights = () => {
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Smoothed Line Chart (Trend) */}
+                  {/* Normalized Index Level (1990 = 100) */}
                   <div className="h-[260px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <RechartsLineChart data={yearlyReturns}>
+                      <RechartsLineChart data={normalizedIndexLevels}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="year" />
-                        <YAxis tickFormatter={(v) => `${v}%`} />
+                        <YAxis tickFormatter={(v) => `${v.toFixed(0)}`} />
                         <Tooltip
-                          formatter={(value: number) => [`${value.toFixed(2)}%`, "Return"]}
+                          formatter={(value: number) => [`${value.toFixed(2)}`, "Index Level (1990 = 100)"]}
                           labelFormatter={(label) => `Year: ${label}`}
                         />
                         <Legend />
-                        <ReferenceLine y={0} stroke="#666" />
                         <Line
                           type="monotone"
-                          dataKey={selectedIndex}
-                          name={`${selectedIndexConfig?.label} (Smoothed)`}
+                          dataKey="normalized"
+                          name={`${selectedIndexConfig?.label} (1990 = 100)`}
                           stroke={selectedIndexConfig?.color}
                           strokeWidth={3}
                           dot={false}
