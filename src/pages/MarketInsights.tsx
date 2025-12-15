@@ -5,6 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Clock,
   TrendingUp,
@@ -47,6 +49,7 @@ import {
   MarketDataPoint,
   RollingReturnStats,
   BoxPlotStats,
+  BestWorstDaysImpact,
 } from "@/utils/marketInsightsAnalysis";
 
 const INDEX_OPTIONS = [
@@ -72,6 +75,8 @@ const MarketInsights = () => {
   const [data, setData] = useState<MarketDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState<string>('sp500');
+  const [missingDaysDialogOpen, setMissingDaysDialogOpen] = useState(false);
+  const [selectedMissingDaysScenario, setSelectedMissingDaysScenario] = useState<BestWorstDaysImpact | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -106,6 +111,10 @@ const MarketInsights = () => {
   const yearlyReturns = useMemo(() => calculateYearlyReturns(data), [data]);
 
   const selectedIndexConfig = INDEX_OPTIONS.find(i => i.value === selectedIndex);
+  const openMissingDaysList = (scenario: BestWorstDaysImpact) => {
+    setSelectedMissingDaysScenario(scenario);
+    setMissingDaysDialogOpen(true);
+  };
 
   if (loading) {
     return (
@@ -786,10 +795,23 @@ const MarketInsights = () => {
                           const fullyInvested = missingDaysImpact[0]?.finalValue || 0;
                           const lost = fullyInvested - scenario.finalValue;
                           const lostPct = fullyInvested > 0 ? (lost / fullyInvested) * 100 : 0;
+                          const canShowMissingDays = scenario.missedDays > 0 && (scenario.missedDaysList?.length ?? 0) > 0;
 
                           return (
                             <tr key={idx} className="border-b hover:bg-muted/50">
-                              <td className="py-3 px-4 font-medium">{scenario.scenario}</td>
+                              <td className="py-3 px-4 font-medium">
+                                {canShowMissingDays ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openMissingDaysList(scenario)}
+                                    className="text-primary underline underline-offset-4 hover:text-primary/80"
+                                  >
+                                    {scenario.scenario}
+                                  </button>
+                                ) : (
+                                  scenario.scenario
+                                )}
+                              </td>
                               <td className="text-right py-3 px-4">
                                 ${scenario.finalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                               </td>
@@ -824,6 +846,59 @@ const MarketInsights = () => {
                   </Alert>
                 </CardContent>
               </Card>
+
+              {/* Missing Days List Dialog */}
+              <Dialog open={missingDaysDialogOpen} onOpenChange={setMissingDaysDialogOpen}>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {selectedMissingDaysScenario
+                        ? `Missing days: ${selectedMissingDaysScenario.scenario}`
+                        : "Missing days"}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {selectedMissingDaysScenario?.missedDays
+                        ? `These are the top ${selectedMissingDaysScenario.missedDays} daily gain days (sorted by daily return).`
+                        : "No missing days for this scenario."}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {selectedMissingDaysScenario?.missedDaysList?.length ? (
+                    <ScrollArea className="h-[55vh] pr-4">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left py-2 px-3">#</th>
+                              <th className="text-left py-2 px-3">Date</th>
+                              <th className="text-right py-2 px-3">Daily Return</th>
+                              <th className="text-right py-2 px-3">Index Value</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedMissingDaysScenario.missedDaysList.map((d, i) => (
+                              <tr key={`${d.date}-${i}`} className="border-b hover:bg-muted/50">
+                                <td className="py-2 px-3 text-muted-foreground">{i + 1}</td>
+                                <td className="py-2 px-3 font-medium">{d.date}</td>
+                                <td className="py-2 px-3 text-right text-green-600">
+                                  +{(d.dailyReturn * 100).toFixed(2)}%
+                                </td>
+                                <td className="py-2 px-3 text-right text-muted-foreground">
+                                  {d.indexValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      No missing day details available.
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
             </TabsContent>
 
             {/* Yearly Returns */}
