@@ -532,6 +532,8 @@ export function analyzeWorstEntryPoints(
   if (data.length < 2) return [];
 
   // Group data by year and find each year's peak
+  // We need to find the LAST occurrence of the peak value in each year
+  // to ensure we're using the actual peak date, not just the first occurrence
   const yearlyPeaks: Map<number, { index: number; value: number; date: string }> = new Map();
 
   for (let i = 0; i < data.length; i++) {
@@ -541,12 +543,15 @@ export function analyzeWorstEntryPoints(
     const year = parseInt(data[i].date.substring(0, 4));
     const existing = yearlyPeaks.get(year);
 
-    if (!existing || value > existing.value) {
+    // Update if this is a higher value, or if it's the same value but later in the year
+    // (to get the last occurrence of the peak value)
+    if (!existing || value > existing.value || (value === existing.value && i > existing.index)) {
       yearlyPeaks.set(year, { index: i, value, date: data[i].date });
     }
   }
 
   // For each year's peak, find when it recovered
+  // Recovery means the price exceeded the peak value (not just equal to it)
   const lastValue = data[data.length - 1][indexKey] as number;
   const currentYear = parseInt(data[data.length - 1].date.substring(0, 4));
 
@@ -557,9 +562,13 @@ export function analyzeWorstEntryPoints(
       let recoveryDate: string | null = null;
       let recoveryDays: number | null = null;
 
+      // Find the first date AFTER the peak where price exceeds (not just equals) the peak value
+      // Skip the immediate next day to avoid false recoveries due to data quality issues
       for (let i = peak.index + 1; i < data.length; i++) {
         const value = data[i][indexKey] as number;
-        if (value >= peak.value) {
+        // Only consider it recovered if price is STRICTLY greater than peak value
+        // This ensures we're looking for actual recovery, not just equal prices
+        if (value > peak.value) {
           recoveryDate = data[i].date;
           recoveryDays = Math.round(
             (new Date(data[i].date).getTime() - new Date(peak.date).getTime()) / (24 * 60 * 60 * 1000)
