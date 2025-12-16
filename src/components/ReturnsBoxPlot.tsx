@@ -165,8 +165,8 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
           style={{
             left: `${getPosition(stats.min)}%`,
             backgroundColor: color,
-            height: '30%',
-            top: `${yOffset - 15}%`,
+            height: '45%',
+            top: `${yOffset - 22.5}%`,
           }}
         />
 
@@ -176,8 +176,8 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
           style={{
             left: `${getPosition(stats.max)}%`,
             backgroundColor: color,
-            height: '30%',
-            top: `${yOffset - 15}%`,
+            height: '45%',
+            top: `${yOffset - 22.5}%`,
           }}
         />
 
@@ -189,8 +189,8 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
             width: `${getPosition(stats.q3) - getPosition(stats.q1)}%`,
             backgroundColor: `${color}20`,
             borderColor: color,
-            height: '30%',
-            top: `${yOffset - 15}%`,
+            height: '45%',
+            top: `${yOffset - 22.5}%`,
           }}
         />
 
@@ -200,8 +200,8 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
           style={{
             left: `${getPosition(stats.median)}%`,
             backgroundColor: color,
-            height: '30%',
-            top: `${yOffset - 15}%`,
+            height: '45%',
+            top: `${yOffset - 22.5}%`,
           }}
         />
 
@@ -265,7 +265,7 @@ export function ReturnsBoxPlot({ data }: ReturnsBoxPlotProps) {
             return (
               <div key={period.key} className="flex items-center gap-4">
                 <div className="w-20 text-sm font-medium text-muted-foreground">{period.label}</div>
-                <div className="flex-1 relative h-16">
+                <div className="flex-1 relative h-24">
                   {hasData ? (
                     <>
                       {/* Scale background */}
