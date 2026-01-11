@@ -100,21 +100,21 @@ const CustomTooltip = ({ active, payload, visibleIndices }: CustomTooltipProps) 
     };
 
     const percentValueMap: Record<string, number> = {
-      Fund: dataPoint.Fund,
-      SHA: dataPoint.SHA,
-      SHE: dataPoint.SHE,
-      CSI300: dataPoint.CSI300,
-      SP500: dataPoint.SP500,
-      Nasdaq: dataPoint.Nasdaq,
-      FTSE100: dataPoint.FTSE100,
-      HangSeng: dataPoint.HangSeng,
-      Nikkei225: dataPoint.Nikkei225,
-      TSX: dataPoint.TSX,
-      KLSE: dataPoint.KLSE,
-      CAC40: dataPoint.CAC40,
-      DAX: dataPoint.DAX,
-      STI: dataPoint.STI,
-      ASX200: dataPoint.ASX200,
+      Fund: Number(dataPoint.Fund) || 0,
+      SHA: Number(dataPoint.SHA) || 0,
+      SHE: Number(dataPoint.SHE) || 0,
+      CSI300: Number(dataPoint.CSI300) || 0,
+      SP500: Number(dataPoint.SP500) || 0,
+      Nasdaq: Number(dataPoint.Nasdaq) || 0,
+      FTSE100: Number(dataPoint.FTSE100) || 0,
+      HangSeng: Number(dataPoint.HangSeng) || 0,
+      Nikkei225: Number(dataPoint.Nikkei225) || 0,
+      TSX: Number(dataPoint.TSX) || 0,
+      KLSE: Number(dataPoint.KLSE) || 0,
+      CAC40: Number(dataPoint.CAC40) || 0,
+      DAX: Number(dataPoint.DAX) || 0,
+      STI: Number(dataPoint.STI) || 0,
+      ASX200: Number(dataPoint.ASX200) || 0,
     };
 
     // Group visible indices by region
