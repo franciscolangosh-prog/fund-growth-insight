@@ -1,76 +1,8 @@
-import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Clock, RefreshCw, CheckCircle, AlertCircle, Edit2, Save, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { Clock, CheckCircle } from "lucide-react";
 
 export function CronJobManager() {
-  const [editing, setEditing] = useState(false);
-  const [currentSchedule, setCurrentSchedule] = useState("50 23,5,11,17 * * *");
-  const [newSchedule, setNewSchedule] = useState("");
-  const { toast } = useToast();
-
-  const handleEdit = () => {
-    setEditing(true);
-    setNewSchedule(currentSchedule);
-  };
-
-  const handleCancel = () => {
-    setEditing(false);
-    setNewSchedule("");
-  };
-
-  const handleSave = () => {
-    if (!newSchedule.trim()) {
-      toast({
-        title: "Invalid Schedule",
-        description: "Please enter a valid cron expression.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Copy SQL to clipboard
-    const sql = `-- Unschedule existing job
-SELECT cron.unschedule(jobname) 
-FROM cron.job 
-WHERE jobname LIKE '%market%';
-
--- Schedule new job with updated timing
-SELECT cron.schedule(
-  'fetch-market-data-scheduled',
-  '${newSchedule}',
-  $$
-  SELECT
-    net.http_post(
-        url:='https://iigwtsthbbpufchbjmur.supabase.co/functions/v1/fetch-market-data',
-        headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpZ3d0c3RoYmJwdWZjaGJqbXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MTkyODEsImV4cCI6MjA3NTA5NTI4MX0.CbGprJ8z8CylcMdjIad1smKRT-sOaGWQHOmomnPhJBg"}'::jsonb,
-        body:=concat('{"time": "', now(), '"}')::jsonb
-    ) as request_id;
-  $$
-);`;
-
-    navigator.clipboard.writeText(sql).then(() => {
-      setCurrentSchedule(newSchedule);
-      toast({
-        title: "SQL Copied to Clipboard",
-        description: "Paste this SQL in the Cloud → Database section to update the schedule.",
-      });
-      setEditing(false);
-      setNewSchedule("");
-    }).catch(() => {
-      toast({
-        title: "Copy Failed",
-        description: "Please manually copy the SQL from the console.",
-        variant: "destructive",
-      });
-      console.log('SQL to execute:', sql);
-    });
-  };
+  const currentSchedule = "50 23,5,11,17 * * *";
 
   const parseCronSchedule = (schedule: string): string => {
     const parts = schedule.split(' ');
@@ -108,7 +40,7 @@ SELECT cron.schedule(
           Market Data Cron Schedule
         </CardTitle>
         <CardDescription>
-          View and manage the automated market data fetching schedule
+          Automated market data fetching schedule (read-only)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -124,114 +56,12 @@ SELECT cron.schedule(
               </div>
             </div>
 
-            {!editing ? (
-              <>
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold">Schedule</p>
-                  <p className="text-sm font-mono text-muted-foreground">{currentSchedule}</p>
-                  <p className="text-xs text-muted-foreground italic">
-                    {parseCronSchedule(currentSchedule)}
-                  </p>
-                </div>
-
-                <Button
-                  onClick={handleEdit}
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-2"
-                >
-                  <Edit2 className="h-4 w-4 mr-2" />
-                  Edit Schedule
-                </Button>
-              </>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <Label htmlFor="cron-schedule" className="text-sm">Cron Expression</Label>
-                  <Input
-                    id="cron-schedule"
-                    value={newSchedule}
-                    onChange={(e) => setNewSchedule(e.target.value)}
-                    placeholder="50 23,5,11,17 * * *"
-                    className="font-mono"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Format: minute hour day month weekday
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleSave}
-                    size="sm"
-                    className="flex-1"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Copy SQL to Update
-                  </Button>
-                  <Button
-                    onClick={handleCancel}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Click "Copy SQL to Update" to copy the SQL command. Then go to Cloud → Database and execute it to update the schedule.
-            </AlertDescription>
-          </Alert>
-
-          <div className="pt-4 border-t">
-            <h3 className="text-sm font-semibold mb-3">Quick Schedules</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setEditing(true);
-                  setNewSchedule("0 6 * * *");
-                }}
-              >
-                Daily at 6 AM
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setEditing(true);
-                  setNewSchedule("50 23,5,11,17 * * *");
-                }}
-              >
-                4x Daily (Current)
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setEditing(true);
-                  setNewSchedule("0 */6 * * *");
-                }}
-              >
-                Every 6 Hours
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setEditing(true);
-                  setNewSchedule("0 0 * * *");
-                }}
-              >
-                Daily at Midnight
-              </Button>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold">Schedule</p>
+              <p className="text-sm font-mono text-muted-foreground">{currentSchedule}</p>
+              <p className="text-xs text-muted-foreground italic">
+                {parseCronSchedule(currentSchedule)}
+              </p>
             </div>
           </div>
 
