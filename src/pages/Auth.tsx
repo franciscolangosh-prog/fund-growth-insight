@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigation } from '@/components/Navigation';
@@ -9,29 +9,47 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, Lock, TrendingUp } from 'lucide-react';
+import { Loader2, Mail, Lock, TrendingUp, ArrowLeft } from 'lucide-react';
 
 const authSchema = z.object({
   email: z.string().trim().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 });
 
+const emailSchema = z.object({
+  email: z.string().trim().email({ message: "Please enter a valid email address" }),
+});
+
+const passwordSchema = z.object({
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+});
+
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, signIn, signUp } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { user, loading: authLoading, signIn, signUp, resetPassword, updatePassword } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
-  // Redirect if already logged in
+  // Check if coming from password reset link
   useEffect(() => {
-    if (user && !authLoading) {
+    if (searchParams.get('reset') === 'true' && user) {
+      setShowResetPassword(true);
+    }
+  }, [searchParams, user]);
+
+  // Redirect if already logged in (and not resetting password)
+  useEffect(() => {
+    if (user && !authLoading && !showResetPassword) {
       navigate('/analysis');
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, showResetPassword]);
 
   const validateInputs = () => {
     const result = authSchema.safeParse({ email, password });
@@ -85,12 +103,207 @@ const Auth = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    const result = emailSchema.safeParse({ email });
+    if (!result.success) {
+      setError(result.error.errors[0].message);
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await resetPassword(email);
+    setLoading(false);
+
+    if (error) {
+      setError(error.message);
+    } else {
+      setSuccess('Password reset email sent! Check your inbox for the reset link.');
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    const result = passwordSchema.safeParse({ password });
+    if (!result.success) {
+      setError(result.error.errors[0].message);
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await updatePassword(password);
+    setLoading(false);
+
+    if (error) {
+      setError(error.message);
+    } else {
+      setSuccess('Password updated successfully! Redirecting...');
+      setShowResetPassword(false);
+      setTimeout(() => navigate('/analysis'), 1500);
+    }
+  };
+
   if (authLoading) {
     return (
       <>
         <Navigation />
         <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-background">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </>
+    );
+  }
+
+  // Reset Password Form (after clicking email link)
+  if (showResetPassword) {
+    return (
+      <>
+        <Navigation />
+        <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-background p-4">
+          <div className="w-full max-w-md space-y-6">
+            <div className="text-center space-y-2">
+              <div className="flex justify-center">
+                <div className="rounded-full bg-primary/10 p-3">
+                  <TrendingUp className="h-8 w-8 text-primary" />
+                </div>
+              </div>
+              <h1 className="text-2xl font-bold">Set New Password</h1>
+              <p className="text-muted-foreground">
+                Enter your new password below
+              </p>
+            </div>
+
+            <Card>
+              <CardContent className="pt-6">
+                {error && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {success && (
+                  <Alert className="mb-4 border-green-500 bg-green-50 text-green-700">
+                    <AlertDescription>{success}</AlertDescription>
+                  </Alert>
+                )}
+
+                <form onSubmit={handleUpdatePassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="new-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      'Update Password'
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Forgot Password Form
+  if (showForgotPassword) {
+    return (
+      <>
+        <Navigation />
+        <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-background p-4">
+          <div className="w-full max-w-md space-y-6">
+            <div className="text-center space-y-2">
+              <div className="flex justify-center">
+                <div className="rounded-full bg-primary/10 p-3">
+                  <TrendingUp className="h-8 w-8 text-primary" />
+                </div>
+              </div>
+              <h1 className="text-2xl font-bold">Reset Password</h1>
+              <p className="text-muted-foreground">
+                Enter your email to receive a reset link
+              </p>
+            </div>
+
+            <Card>
+              <CardContent className="pt-6">
+                {error && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {success && (
+                  <Alert className="mb-4 border-green-500 bg-green-50 text-green-700">
+                    <AlertDescription>{success}</AlertDescription>
+                  </Alert>
+                )}
+
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      'Send Reset Link'
+                    )}
+                  </Button>
+                </form>
+
+                <Button
+                  variant="ghost"
+                  className="w-full mt-4"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setError(null);
+                    setSuccess(null);
+                  }}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Sign In
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </>
     );
@@ -157,7 +370,20 @@ const Auth = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="signin-password">Password</Label>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="signin-password">Password</Label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowForgotPassword(true);
+                            setError(null);
+                            setSuccess(null);
+                          }}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
                       <div className="relative">
                         <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
