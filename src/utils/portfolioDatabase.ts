@@ -9,10 +9,18 @@ export const savePortfolioToDatabase = async (
   data: SimplifiedPortfolioData[] | PortfolioData[]
 ): Promise<string | null> => {
   try {
-    // Create portfolio entry
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error("User not authenticated");
+      return null;
+    }
+
+    // Create portfolio entry with user_id
     const { data: portfolio, error: portfolioError } = await supabase
       .from('portfolios')
-      .insert({ name })
+      .insert({ name, user_id: user.id })
       .select()
       .single();
 
