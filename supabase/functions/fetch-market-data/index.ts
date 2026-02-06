@@ -40,18 +40,53 @@ Deno.serve(async (req) => {
 
     console.log(`Fetching market data for date: ${targetDate}`);
 
+    // Try to fetch fresh data from APIs
     const marketData: MarketData = await fetchMarketDataFromAPIs(targetDate);
 
-    // Only include fields that have actual values (not undefined)
+    // Build data to upsert with fresh values
     const dataToUpsert: Record<string, unknown> = { date: targetDate };
-    Object.entries(marketData).forEach(([key, value]) => {
-      if (key !== 'date' && value !== undefined) {
+    const indexKeys = ['sha', 'she', 'csi300', 'sp500', 'nasdaq', 'ftse100', 'hangseng', 'nikkei225', 'tsx', 'klse', 'cac40', 'dax', 'sti', 'asx200'];
+    
+    indexKeys.forEach(key => {
+      const value = marketData[key as keyof MarketData];
+      if (value !== undefined) {
         dataToUpsert[key] = value;
       }
     });
 
+    // FORWARD-FILL: For indices without fresh data, use the most recent available value
+    const missingIndices = indexKeys.filter(key => dataToUpsert[key] === undefined);
+    
+    if (missingIndices.length > 0) {
+      console.log(`Missing data for ${missingIndices.length} indices, attempting forward-fill...`);
+      
+      // Fetch the last 10 records to find non-null values for each missing index
+      const { data: recentRecords } = await supabaseClient
+        .from('market_indices')
+        .select('*')
+        .lt('date', targetDate)
+        .order('date', { ascending: false })
+        .limit(10);
+      
+      if (recentRecords && recentRecords.length > 0) {
+        missingIndices.forEach(key => {
+          // Find the most recent non-null value for this index
+          for (const record of recentRecords) {
+            const value = record[key];
+            if (value !== null && value !== undefined) {
+              dataToUpsert[key] = value;
+              console.log(`Forward-filled ${key}: ${value} (from ${record.date})`);
+              break;
+            }
+          }
+        });
+      }
+    }
+
     let resultData = null;
-    if (Object.keys(dataToUpsert).length > 1) {
+    const valueCount = Object.keys(dataToUpsert).filter(k => k !== 'date').length;
+    
+    if (valueCount > 0) {
       const { data, error } = await supabaseClient
         .from('market_indices')
         .upsert(dataToUpsert, { onConflict: 'date' })
@@ -64,9 +99,9 @@ Deno.serve(async (req) => {
       }
 
       resultData = data;
-      console.log(`Market data updated successfully with ${Object.keys(dataToUpsert).length - 1} values:`, data);
+      console.log(`Market data updated successfully with ${valueCount} values (including forward-fill)`);
     } else {
-      console.warn('No market data available from APIs');
+      console.warn('No market data available from APIs or forward-fill');
     }
 
     return new Response(
@@ -88,57 +123,61 @@ Deno.serve(async (req) => {
 
 /**
  * Fetches market data with Chinese data sources as primary for Chinese indices
+ * Uses sequential fetching with delays to avoid Yahoo Finance rate limiting (429 errors)
  */
 async function fetchMarketDataFromAPIs(date: string): Promise<MarketData> {
   console.log(`Fetching real market data for ${date}`);
   
-  const symbols = {
-    sha: { yahoo: '000001.SS', alpha: '000001.SS', chinese: 'sh000001' },
-    she: { yahoo: '399001.SZ', alpha: '399001.SZ', chinese: 'sz399001' },
-    csi300: { yahoo: '000300.SS', alpha: '000300.SS', chinese: 'sh000300' },
-    sp500: { yahoo: '^GSPC', alpha: 'SPX' },
-    nasdaq: { yahoo: '^IXIC', alpha: 'IXIC' },
-    ftse100: { yahoo: '^FTSE', alpha: 'FTSE' },
-    hangseng: { yahoo: '^HSI', alpha: 'HSI' },
-    nikkei225: { yahoo: '^N225', alpha: 'N225' },
-    tsx: { yahoo: '^GSPTSE', alpha: 'GSPTSE' },
-    klse: { yahoo: '^KLSE', alpha: 'KLSE' },
-    cac40: { yahoo: '^FCHI', alpha: 'FCHI' },
-    dax: { yahoo: '^GDAXI', alpha: 'GDAXI' },
-    sti: { yahoo: '^STI', alpha: 'STI' },
-    asx200: { yahoo: '^AXJO', alpha: 'AXJO' },
-  };
-
-  const results = await Promise.all(
-    Object.entries(symbols).map(async ([key, symbol]) => {
-      let value: number | undefined;
-      
-      // For Chinese indices (sha, she, csi300), try Chinese data sources first
-      if ('chinese' in symbol && symbol.chinese) {
-        value = await fetchChineseMarketData(symbol.chinese, date);
-        if (value !== undefined) {
-          console.log(`Got ${key} from Chinese source: ${value}`);
-          return { key, value };
-        }
-      }
-      
-      // Try Yahoo Finance
-      value = await fetchYahooFinanceData(symbol.yahoo, date);
-      
-      // If Yahoo fails, try Alpha Vantage as fallback
-      if (value === undefined) {
-        console.log(`Yahoo Finance failed for ${key}, trying Alpha Vantage...`);
-        value = await fetchAlphaVantageData(symbol.alpha, date);
-      }
-      
-      return { key, value };
-    })
-  );
+  const symbols: Array<{ key: string; yahoo: string; alpha: string; chinese?: string }> = [
+    { key: 'sha', yahoo: '000001.SS', alpha: '000001.SS', chinese: 'sh000001' },
+    { key: 'she', yahoo: '399001.SZ', alpha: '399001.SZ', chinese: 'sz399001' },
+    { key: 'csi300', yahoo: '000300.SS', alpha: '000300.SS', chinese: 'sh000300' },
+    { key: 'sp500', yahoo: '^GSPC', alpha: 'SPX' },
+    { key: 'nasdaq', yahoo: '^IXIC', alpha: 'IXIC' },
+    { key: 'ftse100', yahoo: '^FTSE', alpha: 'FTSE' },
+    { key: 'hangseng', yahoo: '^HSI', alpha: 'HSI' },
+    { key: 'nikkei225', yahoo: '^N225', alpha: 'N225' },
+    { key: 'tsx', yahoo: '^GSPTSE', alpha: 'GSPTSE' },
+    { key: 'klse', yahoo: '^KLSE', alpha: 'KLSE' },
+    { key: 'cac40', yahoo: '^FCHI', alpha: 'FCHI' },
+    { key: 'dax', yahoo: '^GDAXI', alpha: 'GDAXI' },
+    { key: 'sti', yahoo: '^STI', alpha: 'STI' },
+    { key: 'asx200', yahoo: '^AXJO', alpha: 'AXJO' },
+  ];
 
   const marketData: MarketData = { date };
-  results.forEach(({ key, value }) => {
-    marketData[key as keyof Omit<MarketData, 'date'>] = value;
-  });
+
+  // Fetch Chinese indices first (they use different API, no rate limiting issues)
+  const chineseIndices = symbols.filter(s => s.chinese);
+  for (const symbol of chineseIndices) {
+    const value = await fetchChineseMarketData(symbol.chinese!, date);
+    if (value !== undefined) {
+      console.log(`Got ${symbol.key} from Chinese source: ${value}`);
+      marketData[symbol.key as keyof Omit<MarketData, 'date'>] = value;
+    }
+  }
+
+  // Fetch non-Chinese indices sequentially with delays to avoid rate limiting
+  const nonChineseIndices = symbols.filter(s => !s.chinese);
+  for (const symbol of nonChineseIndices) {
+    let value: number | undefined;
+    
+    // Try Yahoo Finance with retry logic for rate limiting
+    value = await fetchYahooFinanceDataWithRetry(symbol.yahoo, date);
+    
+    // If Yahoo fails, try Alpha Vantage as fallback
+    if (value === undefined) {
+      console.log(`Yahoo Finance failed for ${symbol.key}, trying Alpha Vantage...`);
+      value = await fetchAlphaVantageData(symbol.alpha, date);
+    }
+    
+    if (value !== undefined) {
+      marketData[symbol.key as keyof Omit<MarketData, 'date'>] = value;
+    }
+    
+    // Add delay between requests to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
 
   return marketData;
 }
@@ -262,6 +301,26 @@ async function fetchSinaData(symbol: string, date: string): Promise<number | und
 }
 
 /**
+ * Fetches index data from Yahoo Finance with retry logic for rate limiting (429 errors)
+ */
+async function fetchYahooFinanceDataWithRetry(symbol: string, date: string, maxRetries = 3): Promise<number | undefined> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const result = await fetchYahooFinanceData(symbol, date);
+    if (result !== undefined) {
+      return result;
+    }
+    
+    // Wait before retrying (exponential backoff)
+    if (attempt < maxRetries - 1) {
+      const delay = Math.pow(2, attempt) * 500; // 500ms, 1000ms, 2000ms
+      console.log(`Retrying ${symbol} in ${delay}ms (attempt ${attempt + 2}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  return undefined;
+}
+
+/**
  * Fetches index data from Yahoo Finance query API
  * Uses the public query1.finance.yahoo.com endpoint (no API key required)
  */
@@ -286,7 +345,16 @@ async function fetchYahooFinanceData(symbol: string, date: string): Promise<numb
       console.log(`Fetching historical data for ${symbol} on ${date}...`);
     }
     
-    const response = await fetch(url);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (response.status === 429) {
+      console.warn(`Yahoo Finance rate limited for ${symbol}`);
+      return undefined;
+    }
 
     if (!response.ok) {
       console.error(`Yahoo Finance API error for ${symbol}: ${response.status}`);
