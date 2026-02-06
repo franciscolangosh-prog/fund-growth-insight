@@ -56,6 +56,8 @@ Deno.serve(async (req) => {
     let successCount = 0;
     let failCount = 0;
 
+    const indexKeys = ['sha', 'she', 'csi300', 'sp500', 'nasdaq', 'ftse100', 'hangseng', 'nikkei225', 'tsx', 'klse', 'cac40', 'dax', 'sti', 'asx200'];
+
     // Process dates ONE AT A TIME to avoid CPU spikes
     // Use smaller batches with longer delays
     const batchSize = 2; // Process 2 dates at a time
@@ -70,14 +72,43 @@ Deno.serve(async (req) => {
           
           // Only include fields that have actual values
           const dataToUpsert: Record<string, unknown> = { date };
-          Object.entries(marketData).forEach(([key, value]) => {
+          indexKeys.forEach(key => {
+            const value = marketData[key as keyof typeof marketData];
             if (value !== undefined) {
               dataToUpsert[key] = value;
             }
           });
 
+          // FORWARD-FILL: For indices without fresh data, use the most recent available value
+          const missingIndices = indexKeys.filter(key => dataToUpsert[key] === undefined);
+          
+          if (missingIndices.length > 0) {
+            console.log(`Forward-filling ${missingIndices.length} indices for ${date}...`);
+            
+            // Fetch recent records to find non-null values
+            const { data: recentRecords } = await supabaseClient
+              .from('market_indices')
+              .select('*')
+              .lt('date', date)
+              .order('date', { ascending: false })
+              .limit(10);
+            
+            if (recentRecords && recentRecords.length > 0) {
+              missingIndices.forEach(key => {
+                for (const record of recentRecords) {
+                  const value = record[key];
+                  if (value !== null && value !== undefined) {
+                    dataToUpsert[key] = value;
+                    break;
+                  }
+                }
+              });
+            }
+          }
+
           // Only upsert if we have at least one market value
-          if (Object.keys(dataToUpsert).length > 1) {
+          const valueCount = Object.keys(dataToUpsert).filter(k => k !== 'date').length;
+          if (valueCount > 0) {
             const { error } = await supabaseClient
               .from('market_indices')
               .upsert(dataToUpsert, { onConflict: 'date' });
@@ -86,7 +117,7 @@ Deno.serve(async (req) => {
               console.error(`Error upserting data for ${date}:`, error);
               failCount++;
             } else {
-              console.log(`✓ ${date}: ${Object.keys(dataToUpsert).length - 1} values`);
+              console.log(`✓ ${date}: ${valueCount} values (including forward-fill)`);
               successCount++;
             }
           } else {
@@ -107,6 +138,7 @@ Deno.serve(async (req) => {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
+
 
     console.log(`Backfill complete: ${successCount} successful, ${failCount} failed`);
 
