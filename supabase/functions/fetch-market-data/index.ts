@@ -301,7 +301,26 @@ async function fetchSinaData(symbol: string, date: string): Promise<number | und
 }
 
 /**
+ * Fast fetch with short timeout (5 seconds max per request)
+ */
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
  * Fetches index data from Yahoo Finance with retry logic for rate limiting (429 errors)
+ * Uses the proven approach from the reference implementation
  */
 async function fetchYahooFinanceDataWithRetry(symbol: string, date: string, maxRetries = 3): Promise<number | undefined> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -321,35 +340,21 @@ async function fetchYahooFinanceDataWithRetry(symbol: string, date: string, maxR
 }
 
 /**
- * Fetches index data from Yahoo Finance query API
- * Uses the public query1.finance.yahoo.com endpoint (no API key required)
+ * Fetches index data from Yahoo Finance using the proven v8/finance/chart endpoint
+ * Uses interval=1d&range=1d for reliable current market data
  */
 async function fetchYahooFinanceData(symbol: string, date: string): Promise<number | undefined> {
   try {
-    const targetDate = new Date(date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    targetDate.setHours(0, 0, 0, 0);
+    // Use the simple and reliable endpoint format from reference implementation
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
     
-    let url: string;
+    console.log(`Fetching ${symbol} from Yahoo Finance...`);
     
-    // For current/recent data, use the range parameter (works better)
-    if (targetDate.getTime() === today.getTime()) {
-      url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?region=US&lang=en-US&includePrePost=false&interval=1d&useYfid=true&range=1d`;
-      console.log(`Fetching latest data for ${symbol}...`);
-    } else {
-      // For historical data, use period parameters
-      const period1 = Math.floor(targetDate.getTime() / 1000);
-      const period2 = period1 + 86400; // Add 1 day
-      url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=1d`;
-      console.log(`Fetching historical data for ${symbol} on ${date}...`);
-    }
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-    
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
+    const response = await fetchWithTimeout(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    }, 5000);
 
     if (response.status === 429) {
       console.warn(`Yahoo Finance rate limited for ${symbol}`);
@@ -357,7 +362,7 @@ async function fetchYahooFinanceData(symbol: string, date: string): Promise<numb
     }
 
     if (!response.ok) {
-      console.error(`Yahoo Finance API error for ${symbol}: ${response.status}`);
+      console.warn(`Yahoo Finance HTTP ${response.status} for ${symbol}`);
       return undefined;
     }
 
@@ -369,24 +374,39 @@ async function fetchYahooFinanceData(symbol: string, date: string): Promise<numb
       return undefined;
     }
     
-    // Try to get price from meta first (more reliable for current data)
-    const metaPrice = result.meta?.regularMarketPrice;
-    if (metaPrice != null && !isNaN(metaPrice)) {
-      console.log(`${symbol}: ${metaPrice} (from meta)`);
-      return metaPrice;
+    const meta = result.meta;
+    
+    // Primary: Get regularMarketPrice from meta (most reliable for current data)
+    const currentPrice = meta?.regularMarketPrice;
+    if (currentPrice != null && !isNaN(currentPrice) && currentPrice > 0) {
+      console.log(`${symbol}: ${currentPrice} (regularMarketPrice)`);
+      return currentPrice;
     }
     
-    // Fallback to historical close price
-    const closePrice = result.indicators?.quote?.[0]?.close?.[0];
-    if (closePrice != null && !isNaN(closePrice)) {
-      console.log(`${symbol}: ${closePrice} (from quote)`);
+    // Fallback: Get previousClose if regularMarketPrice not available
+    const previousClose = meta?.previousClose ?? meta?.chartPreviousClose;
+    if (previousClose != null && !isNaN(previousClose) && previousClose > 0) {
+      console.log(`${symbol}: ${previousClose} (previousClose)`);
+      return previousClose;
+    }
+    
+    // Last resort: Get from quote indicators
+    const quote = result.indicators?.quote?.[0];
+    const closePrice = quote?.close?.[quote.close.length - 1];
+    if (closePrice != null && !isNaN(closePrice) && closePrice > 0) {
+      console.log(`${symbol}: ${closePrice} (quote close)`);
       return closePrice;
     }
     
     console.warn(`No valid price data for ${symbol}`);
     return undefined;
   } catch (error) {
-    console.error(`Error fetching ${symbol}:`, error);
+    const msg = error instanceof Error ? error.message : 'Unknown';
+    if (msg.includes('abort')) {
+      console.warn(`${symbol} request timeout`);
+    } else {
+      console.warn(`${symbol} error: ${msg}`);
+    }
     return undefined;
   }
 }
@@ -407,7 +427,7 @@ async function fetchAlphaVantageData(symbol: string, date: string): Promise<numb
     
     console.log(`Fetching ${symbol} from Alpha Vantage...`);
     
-    const response = await fetch(url);
+    const response = await fetchWithTimeout(url, {}, 10000);
 
     if (!response.ok) {
       console.error(`Alpha Vantage API error for ${symbol}: ${response.status}`);
@@ -422,17 +442,31 @@ async function fetchAlphaVantageData(symbol: string, date: string): Promise<numb
       return undefined;
     }
     
-    // Extract close price for the specific date
+    // Try to get the most recent available data
     const timeSeries = data['Time Series (Daily)'];
-    if (timeSeries && timeSeries[date]) {
-      const closePrice = parseFloat(timeSeries[date]['4. close']);
-      if (!isNaN(closePrice)) {
-        console.log(`${symbol} (Alpha Vantage): ${closePrice}`);
-        return closePrice;
+    if (timeSeries) {
+      // First try the exact date
+      if (timeSeries[date]) {
+        const closePrice = parseFloat(timeSeries[date]['4. close']);
+        if (!isNaN(closePrice) && closePrice > 0) {
+          console.log(`${symbol} (Alpha Vantage): ${closePrice}`);
+          return closePrice;
+        }
+      }
+      
+      // If exact date not found, get the most recent available
+      const dates = Object.keys(timeSeries).sort().reverse();
+      if (dates.length > 0) {
+        const latestDate = dates[0];
+        const closePrice = parseFloat(timeSeries[latestDate]['4. close']);
+        if (!isNaN(closePrice) && closePrice > 0) {
+          console.log(`${symbol} (Alpha Vantage, ${latestDate}): ${closePrice}`);
+          return closePrice;
+        }
       }
     }
     
-    console.warn(`No valid price data for ${symbol} on ${date} from Alpha Vantage`);
+    console.warn(`No valid price data for ${symbol} from Alpha Vantage`);
     return undefined;
   } catch (error) {
     console.error(`Error fetching ${symbol} from Alpha Vantage:`, error);
