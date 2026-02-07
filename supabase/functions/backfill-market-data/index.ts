@@ -220,20 +220,55 @@ async function fetchMarketDataFromAPIs(date: string): Promise<Omit<MarketData, '
   return marketData;
 }
 
+/**
+ * Fast fetch with short timeout (5 seconds max per request)
+ */
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * Fetches historical index data from Yahoo Finance for a specific date
+ * Uses period1/period2 for historical data
+ */
 async function fetchYahooFinanceData(symbol: string, date: string): Promise<number | undefined> {
   try {
+    // For historical backfill, we need period-based query
     const targetDate = new Date(date);
-    const period1 = Math.floor(targetDate.getTime() / 1000);
-    const period2 = period1 + 86400; // +1 day
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    const isToday = targetDate.getTime() >= today.getTime() - 86400000; // Within 1 day
+    
+    let url: string;
+    if (isToday) {
+      // For recent dates, use range query to get current price
+      url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+    } else {
+      // For historical dates, use period query
+      const period1 = Math.floor(targetDate.getTime() / 1000);
+      const period2 = period1 + 86400;
+      url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d`;
+    }
+    
+    const response = await fetchWithTimeout(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    }, 5000);
 
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=1d`;
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-    
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    
     if (!response.ok) {
       return undefined;
     }
@@ -245,14 +280,35 @@ async function fetchYahooFinanceData(symbol: string, date: string): Promise<numb
       return undefined;
     }
     
-    // Get historical close price only
-    const closePrice = result.indicators?.quote?.[0]?.close?.[0];
-    if (closePrice != null && !isNaN(closePrice)) {
-      return closePrice;
+    const meta = result.meta;
+    
+    // For today/recent, use regularMarketPrice
+    if (isToday) {
+      const currentPrice = meta?.regularMarketPrice;
+      if (currentPrice != null && !isNaN(currentPrice) && currentPrice > 0) {
+        console.log(`${symbol}: ${currentPrice}`);
+        return currentPrice;
+      }
+    }
+    
+    // For historical, get close price from quote indicators
+    const quote = result.indicators?.quote?.[0];
+    if (quote?.close && quote.close.length > 0) {
+      const closePrice = quote.close[quote.close.length - 1];
+      if (closePrice != null && !isNaN(closePrice) && closePrice > 0) {
+        console.log(`${symbol}: ${closePrice}`);
+        return closePrice;
+      }
+    }
+    
+    // Fallback to meta prices
+    const previousClose = meta?.previousClose ?? meta?.chartPreviousClose ?? meta?.regularMarketPrice;
+    if (previousClose != null && !isNaN(previousClose) && previousClose > 0) {
+      console.log(`${symbol}: ${previousClose} (fallback)`);
+      return previousClose;
     }
     
     return undefined;
-
   } catch (error) {
     // Silently fail - this is expected for weekends/holidays
     return undefined;
